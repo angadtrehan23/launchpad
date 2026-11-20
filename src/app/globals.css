@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/*
+ * Launchpad design tokens: a Gen Z "sticker" look.
+ * Cream paper, ink outlines, offset shadows, and three loud accents used sparingly:
+ * violet = brand / primary, lime = selected / success, pink = highlight / energy.
+ */
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #0b0b0f;
+  --color-paper: #fffaf0;
+  --color-violet: #7b2ff7;
+  --color-lime: #c6ff3d;
+  --color-pink: #ff4fd8;
+  --color-sky: #5ad8ff;
+  --color-sun: #ffd23f;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* Outlined card/button with a hard offset shadow, like a sticker. */
+@utility brut {
+  border: 2px solid var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+@utility brut-sm {
+  border: 2px solid var(--color-ink);
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+/* Pressing pushes the sticker into its shadow. */
+@utility press {
+  transition: transform 80ms ease, box-shadow 80ms ease;
+  &:active:not(:disabled) {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 var(--color-ink);
+  }
+}
+@utility dotted {
+  background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 12%, transparent) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+@utility font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@utility marquee {
+  animation: marquee 28s linear infinite;
+}
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@utility wiggle {
+  animation: wiggle 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee,
+  .wiggle {
+    animation: none;
+  }
+}
