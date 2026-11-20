@@ -42,7 +42,7 @@ const LLM_MODEL = process.env.LLM_MODEL || "openai";
 const client = PROVIDER === "anthropic" ? new Anthropic({ maxRetries: 0 }) : null;
 
 /** Whole-request budget. Vercel caps the route at 60 s; leave room to save and respond. */
-export const REQUEST_BUDGET_MS = 50_000;
+export const REQUEST_BUDGET_MS = 57_000;
 const MIN_ATTEMPT_MS = 12_000;
 
 // ---------- output contracts ----------
@@ -159,7 +159,7 @@ export function aiCooldownSecs(): number {
 async function callOpenAICompat<S extends z.ZodType>(schema: S, system: string, userPrompt: string, timeoutMs: number): Promise<z.infer<S>> {
   const deadline = Date.now() + timeoutMs;
   // Known cooldown longer than our budget: don't waste a request.
-  if (cooldownUntil - Date.now() > timeoutMs - 10_000) throw new ProviderError("rate_limit", `cooling down ${aiCooldownSecs()}s`);
+  if (cooldownUntil - Date.now() > timeoutMs - 7_000) throw new ProviderError("rate_limit", `cooling down ${aiCooldownSecs()}s`);
   const json = z.toJSONSchema(schema) as JsonSchema;
   const keys = Object.keys(json.properties || {});
   const shape = JSON.stringify(skeleton(json));
@@ -191,7 +191,7 @@ async function callOpenAICompat<S extends z.ZodType>(schema: S, system: string, 
         const body = await res.text();
         const secs = Number(res.headers.get("retry-after")) || Number(body.match(/retry after (\d+)\s*s/i)?.[1]) || 0;
         if (secs) cooldownUntil = Math.max(cooldownUntil, Date.now() + secs * 1000);
-        if (!secs || Date.now() + secs * 1000 + 10_000 > deadline) throw new ProviderError("rate_limit", `provider cooldown ${secs}s`);
+        if (!secs || Date.now() + secs * 1000 + 7_000 > deadline) throw new ProviderError("rate_limit", `provider cooldown ${secs}s`);
         console.log(`[llm] free-tier cooldown, waiting ${secs + 1}s`);
         await new Promise((r) => setTimeout(r, (secs + 1) * 1000));
         res = await send();
@@ -446,7 +446,7 @@ export async function generateDirections(input: CreatorInput, avoid: string[] = 
     if (directions.length < 3) issues.push("Give exactly 3 directions.");
     if (directions.some((d) => RISKY.test(`${d.title} ${d.buyers} ${d.productIdeas.join(" ")}`))) issues.push("Remove guaranteed-result, cure or income claims.");
     return { value: directions, issues };
-  }, 40_000);
+  }, REQUEST_BUDGET_MS);
 
   if (needsMore) return { kind: "needs_more", question: needsMore };
   if (r.value && r.value.length >= 2) return { kind: "ok", directions: r.value, source: "ai", ms: r.ms };
