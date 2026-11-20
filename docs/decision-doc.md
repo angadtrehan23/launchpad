@@ -9,7 +9,7 @@ From SuperProfile's own site, nothing answers those today:
 - no pricing suggestions;
 - Super AI works on a store that already exists.
 
-**Reframe.** The real job isn't "generate a storefront". It's **"help me decide what to sell, and prove someone wants it, before I spend weeks making it."** The AI suggests products the creator **hasn't made yet**. Publishing a store selling a non-existent e-book, then sending buyers to a dead-end checkout, would be a store nobody is proud of. So the first store is a **demand test**: every button collects a waitlist sign-up (or a slot request for calls and workshops). The creator learns what to build from their own followers. Then they unlock payments on SuperProfile's paid plan, which is SuperProfile's revenue moment.
+**Reframe.** The real job isn't "generate a storefront". It's **"help me decide what to sell, and prove someone wants it, before I spend weeks making it."** The AI suggests products the creator **hasn't made yet**. Publishing a store selling a non-existent e-book, then sending buyers to a dead-end checkout, would be a store nobody is proud of. So the first store is a **demand test**: every button opens a ready-to-send WhatsApp message to the creator: "I'd like to join the waitlist for …" (or "request a slot" for calls and workshops). The creator learns what to build from their own followers. Then they unlock payments on SuperProfile's paid plan, which is SuperProfile's revenue moment.
 
 **Assumptions** (to replace with real data):
 - INR price ranges by format × audience size are my estimates, not SuperProfile sales data.
@@ -35,7 +35,7 @@ From SuperProfile's own site, nothing answers those today:
                                                          │
                                                  Publish → /s/handle-x7k2
                                                          │
-                     Follower taps a product → joins waitlist / requests a slot
+        Follower taps a product → pre-written WhatsApp message to the creator
                                                          │
                  Creator sees demand per product → builds the winner → unlocks payments
 ```
@@ -48,13 +48,13 @@ From SuperProfile's own site, nothing answers those today:
 | Decision | Why | Trade-off |
 |---|---|---|
 | **AI writes the words; rules set the price range** | An LLM alone will price a beginner's e-book at ₹2,999. Ranges by format × audience tier are enforced in code, snapped to familiar points (₹199, ₹499…). The AI picks inside the range and explains it ("Why ₹199?") | The ranges are my guesses until real sales data replaces them |
-| **Waitlist instead of checkout** | Products don't exist yet; this turns a dead end into demand data and gives the free plan a reason to upgrade | No money changes hands in the prototype |
+| **Waitlist instead of checkout, delivered on WhatsApp** | Products don't exist yet; this turns a dead end into demand data. Requests arrive where Indian creators already talk to followers, with no database and no personal data stored by us | No money changes hands; the creator counts requests in WhatsApp instead of a dashboard |
 | **A fixed 2-step workflow, not an agent** | The path never changes (directions → store), so a workflow is faster, cheaper and testable. An agent would add failure points for no gain | Less flexible; it can't, say, research competitors |
 | **No Instagram scraping** | Blocked or against platform terms, and fragile on a demo link. Usernames are hints and the slug; the creator's own taps and words are the signal | We don't see real posts; the AI may guess the niche and says so in a banner |
-| **Free, keyless AI by default** (open-weights GPT-OSS 20B) | Real LLM calls at zero cost. A Claude or Gemini key switches in by environment variable | Smaller model, plus a free-tier limit of 1 reply per 45 s, handled by waiting or falling back |
-| **No login; a private edit link** | Removes the biggest drop-off step for a first-session flow | Losing the link means losing edit access (the link is offered before publishing) |
+| **Free, keyless AI, called from the visitor's browser** (open-weights GPT-OSS 20B) | Real LLM calls at zero cost. Each visitor uses their own free quota, so nobody queues behind other sites on Vercel's shared servers. The server builds the prompt and validates every reply. A Claude or Gemini key switches in by environment variable | Smaller model; a free-tier limit of 1 reply per 45 s per visitor, so the store step may wait up to ~40 s if the creator picks a direction very fast |
+| **No login and no database** | Removes the biggest drop-off step and all setup. Drafts live in the creator's browser; a published store lives **inside its own link** (compressed into `/s/<code>`), re-checked by the server every time it's opened | Editing is tied to the device it was built on; republishing gives a new link; no view/click dashboard (Vercel Web Analytics could add one) |
 | **Gen Z "sticker" visual system** | The audience lives on Instagram; bold outlines, lime "selected" states and big type feel native. The default store theme is Candy | Louder than SuperProfile's current look; 4 classic themes are kept |
-| **Safe for a public link** | Store links always get a short suffix (no one can claim `/s/viratkohli`), sign-ups are deletable by the creator, creator answers sent to the AI are disclosed, and `PUBLISH_PAUSED` / `AI_DISABLED` act as kill switches | Slightly less pretty links; real handle verification needs login |
+| **Safe for a public link** | The honesty check runs at publish *and* whenever a link is opened, so hand-made links with risky claims don't render; no handle-based URLs to squat; no visitor data stored; creator answers sent to the AI are disclosed; `PUBLISH_PAUSED` / `AI_DISABLED` act as kill switches | Long links; real handle verification needs login |
 
 ## 4. What I deliberately did not build
 - **Payments and checkout:** SuperProfile already has them; the waitlist validates demand first.

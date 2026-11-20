@@ -8,8 +8,8 @@ New SuperProfile creators sign up, land on an empty store and stall. They have a
 3. **What's it about?** Tap up to 6 topic keywords, optionally write a line, pick English or Hinglish.
 4. **AI suggests 3 directions:** sharp, sellable niche angles with who'd pay and example products. Pick one, ask for 3 more, or type your own.
 5. **AI builds the store:** bio, 2–4 products in SuperProfile's formats with INR prices (and "why ₹499?"), descriptions, and a **2-week launch plan** using SuperProfile features.
-6. **Edit anything, regenerate any part, publish** → a public `/s/<handle>-xxxx` page (always suffixed, so nobody can squat a famous handle) that works on a phone.
-7. **Followers join the waitlist** for a product (or request a slot for calls/workshops). The creator sees demand per product and builds the one people want first, then unlocks payments.
+6. **Edit anything, regenerate any part, publish** → a public page that works on a phone. **No database:** the published store lives inside its own link (`/s/<code>`), and drafts live in the creator's browser.
+7. **Followers join the waitlist on WhatsApp:** tapping a product opens a pre-written message to the creator ("I'd like to join the waitlist for …"). The creator builds the product people ask for most, then unlocks payments.
 
 Background: [`docs/superprofile-research.md`](docs/superprofile-research.md) (what SuperProfile does today and the gap) · [`docs/product-analysis.md`](docs/product-analysis.md) (journey, AI fit, eval, risks, metrics).
 
@@ -20,13 +20,13 @@ npm install
 npm run dev                  # http://localhost:3000 (no keys needed)
 ```
 
-**No keys, no billing.** By default the AI runs on Pollinations' free, keyless gateway (open-weights GPT-OSS 20B). The brief requires real LLM calls, and this keeps them free. A Claude key (`ANTHROPIC_API_KEY`) or any OpenAI-compatible free tier (`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`) can be swapped in by environment variable, with no code change. Without Redis, data goes to `.data/db.json`.
+**No keys, no billing.** By default the AI runs on Pollinations' free, keyless gateway (open-weights GPT-OSS 20B). The brief requires real LLM calls, and this keeps them free. A Claude key (`ANTHROPIC_API_KEY`) or any OpenAI-compatible free tier (`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`) can be swapped in by environment variable, with no code change. The visitor's browser makes the free AI call itself (own quota), and the server validates the reply.
 
 ## Deploy (Vercel)
 
 1. Import the repo in Vercel.
 2. No AI key needed (optional: set one of the keys above).
-3. Storage → add **Upstash Redis** from the Marketplace and connect it (sets `KV_REST_API_URL` / `KV_REST_API_TOKEN`). Publishing refuses to run on Vercel without it, so links can't silently disappear.
+3. Nothing else: **no database, no storage, no keys.**
 
 | Variable | Default |
 |---|---|
@@ -44,8 +44,8 @@ npm run dev                  # http://localhost:3000 (no keys needed)
 | Prompts: directions + store/plan; creator input wrapped as data | `src/lib/prompts.ts` |
 | AI calls: structured output (Zod), code review, one retry inside a 50 s budget, labelled fallbacks | `src/lib/ai.ts` |
 | Rate limits, publish-time claim check, durable-storage guard | `src/lib/server.ts`, `src/app/api/**` |
-| Editor: tap to edit, ↻ per section, launch plan, waitlist inbox, unlock-next panel | `src/app/studio/[id]/Studio.tsx` |
-| Public store + waitlist sheet | `src/app/s/[slug]/` |
+| Editor: tap to edit, ↻ per section, launch plan, WhatsApp set-up, unlock-next panel (drafts saved on the device) | `src/app/studio/[id]/Studio.tsx`, `src/lib/local.ts` |
+| Public store decoded from its link + WhatsApp waitlist sheet | `src/app/s/[slug]/`, `src/lib/share.ts` |
 | Eval: 15 golden cases, runner, human rubric | `evals/` |
 
 **AI in one paragraph.** Two fixed AI steps, not an agent:
@@ -55,7 +55,7 @@ npm run dev                  # http://localhost:3000 (no keys needed)
 - **Fallback.** If the AI is down, the creator gets a clearly labelled starter built only from their own keyword picks. It never copies their raw text.
 - **Regenerating is safe.** Regenerating one part sends the rest of the store as context. It never overwrites anything if it fails, and "regenerate all" keeps the creator's corrections.
 
-**Safety for a public link:** suffixed store links, publish-time honesty check, deletable waitlist entries, AI use disclosed in the wizard, kill switches `PUBLISH_PAUSED=true` / `AI_DISABLED=true`, anonymous funnel totals at `/api/funnel`.
+**Safety for a public link:** honesty check at publish and on every open of a link, no visitor data stored, AI use disclosed in the wizard, kill switches `PUBLISH_PAUSED=true` / `AI_DISABLED=true`, anonymous funnel totals at `/api/funnel`.
 
 **Edge cases handled:**
 - **Input:** empty answers, invalid usernames and pasted profile links, keyboard mash, one-word input (asks once, with a "skip"), 6 unrelated topics, and Hindi-script input.
