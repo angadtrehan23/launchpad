@@ -1,6 +1,6 @@
 # Loom walkthrough script (about 8 minutes)
 
-**Setup before recording:** open the live link on your phone (or Chrome's phone view, 390×844). Open a second tab with the editor of a store that already has 2 waitlist sign-ups, so you don't have to wait for the AI on camera. Speak in your own words; the lines below are a guide.
+**Setup before recording:** open https://launchpad-nu-silk.vercel.app on your phone (or Chrome's phone view, 390×844). Build one store before recording so you have a published link ready in case the free AI is slow on camera. Speak in your own words; the lines below are a guide.
 
 ---
 
@@ -35,10 +35,12 @@
 - **Publish** → share sheet → open the public page.
 
 ### 5:00 – 6:00 · The bet: a demand test (public page)
-- Tap **Join the waitlist** → fill in name + number → consent → joined.
-  > "These products don't exist yet, so instead of a dead-end checkout, followers join a waitlist."
-- Switch to the second tab (editor with sign-ups) → the **Waitlist** panel → the **Unlock next** panel.
-  > "The creator now knows which product to build first, and that's when they upgrade to SuperProfile's paid plan to take payments. Free plan to demand to upgrade."
+- Before publishing, add your WhatsApp number in **"Where your waitlist goes"**.
+- On the public page, tap **Join the waitlist** → WhatsApp opens with "Hi Priya! I'd like to join the waitlist for …".
+  > "These products don't exist yet, so instead of a dead-end checkout, the follower's interest lands in the creator's WhatsApp, where Indian creators already talk to their audience. The creator counts requests per product and builds the winner first."
+- Scroll the editor to **Unlock next**.
+  > "That's when they upgrade to SuperProfile's paid plan to take payments. Free plan, then demand, then upgrade."
+- One line on architecture: "There's no database: drafts stay on the creator's phone and the published store lives inside its own link, re-checked by the server every time it opens."
 
 ### 6:00 – 7:00 · Edge cases (show at least one)
 - Back to home → Topics → clear the chips → type `asdf jkl qwerty` → *Figure out what I can sell*.

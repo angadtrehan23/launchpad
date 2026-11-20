@@ -33,11 +33,11 @@ From SuperProfile's own site, nothing answers those today:
                                                          │
                        edit any field · ↻ one part · regenerate all · theme
                                                          │
-                                                 Publish → /s/handle-x7k2
+                                                 Publish → /s/<code> (store lives in the link)
                                                          │
         Follower taps a product → pre-written WhatsApp message to the creator
                                                          │
-                 Creator sees demand per product → builds the winner → unlocks payments
+                 Creator counts requests per product → builds the winner → unlocks payments
 ```
 
 **Main-screen alternatives I rejected**
@@ -58,7 +58,7 @@ From SuperProfile's own site, nothing answers those today:
 
 ## 4. What I deliberately did not build
 - **Payments and checkout:** SuperProfile already has them; the waitlist validates demand first.
-- **Login and accounts:** they kill first-session activation; the edit link is enough for a prototype.
+- **Login and accounts:** they kill first-session activation; drafts saved on the device are enough for a prototype.
 - **Instagram scraping or login:** terms and fragility. Official API access is a "next 2 weeks" item.
 - **Profile photo upload:** needs storage and moderation; an initials avatar works for now.
 - **Devanagari Hindi output:** Hinglish covers how these creators actually write; Hindi script is next.
@@ -78,7 +78,7 @@ From SuperProfile's own site, nothing answers those today:
   - force buttons to match the format ("Request a slot" vs "Join the waitlist");
   - **block guaranteed-result, cure and income claims**, both in AI output and in what the creator types at publish.
 - **Failure handling:**
-  - one time limit per request (50 s, under the 60 s server cap), with one retry if time allows;
+  - the visitor's browser makes the free AI call (own quota); the server checks the reply, with one time limit per request (57 s, under the 60 s cap) and one retry if time allows;
   - free-tier cooldowns are waited out when they fit;
   - otherwise a **clearly labelled starter store** built only from the creator's own topic picks (never their raw text);
   - regenerating a single part never overwrites anything if it fails;
@@ -86,10 +86,10 @@ From SuperProfile's own site, nothing answers those today:
 - **Evidence:**
   - a 15-case test set (typical, edge, adversarial) with an automatic runner and a 5-point human rubric;
   - with real AI, 5 of 6 paced cases were written by the AI, the prompt injection was ignored, and the "guaranteed stock tips" case correctly fell back to the safe template;
-  - a 42-check end-to-end test covers every edge case.
+  - end-to-end tests (48 checks locally, plus 14 against the live, database-free site) cover the edge cases.
 
 ## 6. Success metrics
-**North Star for this feature:** `new creators × first-session publish rate × % of published stores with a visitor intent signal (waitlist join or click) within 7 days`. Published stores that nobody wants don't count.
+**North Star for this feature:** `new creators × first-session publish rate × % of published stores with a visitor intent signal (waitlist message or click) within 7 days`. Published stores that nobody wants don't count.
 
 1. **First-session publish rate:** new creators who publish in their first session. **Target: +50% relative** vs today's blank-store flow (e.g. 20% → 30%; the real baseline is unknown to me).
 2. **Median time from signup to published store:** **under 5 minutes.**
@@ -97,7 +97,7 @@ From SuperProfile's own site, nothing answers those today:
 **How to measure:**
 - A/B test on new signups: 50% see "Build my store with AI", 50% get today's blank store.
 - Run 2–4 weeks; read once on the date set in advance.
-- Events are already logged: session start, directions shown, generation time and source, edit depth per field, regenerations, publish time.
+- Instrumented in the prototype: generation time and source, edit depth per field (kept on the creator's device), and publish. Inside SuperProfile these events would go to its existing analytics; the prototype has no database, so it doesn't aggregate live totals.
 
 **Guardrails:**
 - the AI group's 30-day first-sale rate must not fall more than 1 point below control;
@@ -116,7 +116,7 @@ From SuperProfile's own site, nothing answers those today:
 1. Replace the guessed price ranges with SuperProfile's own sales data by niche × format × audience.
 2. **Waitlist → "build it":** when a product crosses a demand threshold, AI drafts that e-book or course outline, which closes the loop to a first sale.
 3. Login + official Instagram connection: verify handle ownership (stops impersonation), real photo and bio.
-4. WhatsApp alert to the creator on new sign-ups, plus Devanagari Hindi.
+4. A demand counter: tag each WhatsApp request with its product (WhatsApp Business API) so the creator sees counts, plus Devanagari Hindi.
 5. Grow the eval set to ~50 real inputs and run it on every prompt change; compare the free model vs Claude on the human rubric.
 6. Ship behind a flag and run the A/B test.
 
@@ -125,6 +125,6 @@ I used Claude Code throughout:
 - researched SuperProfile's public site;
 - ran structured product passes: journey mapping, AI-suitability, eval design, risk review, metrics;
 - built the Next.js app and designed the visual system;
-- wrote and ran the 42-check end-to-end test and the eval runner.
+- wrote and ran the end-to-end tests and the eval runner.
 
 The eval found 2 real bugs before any user did: the fallback echoing risky text, and keyboard mash getting through.
