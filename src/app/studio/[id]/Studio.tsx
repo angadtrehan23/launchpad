@@ -1,26 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import StoreView from "@/components/StoreView";
 import Sheet, { Field, inputCls } from "@/components/Sheet";
-import { dismissFlash, readFlash, rememberStore, tokenFor } from "@/lib/local";
+import { dismissFlash, getLocalStore, readFlash, saveLocalStore, type LocalStore } from "@/lib/local";
 import { bandFor, formatInr } from "@/lib/pricing";
 import { THEME_META } from "@/lib/themes";
-import {
-  FORMAT_LABEL,
-  FORMATS,
-  SP_FEATURE_LABEL,
-  THEMES,
-  type Language,
-  type Product,
-  type StoreRecord,
-  type StoreStats,
-  type Storefront,
-  type WaitlistEntry,
-} from "@/lib/types";
+import { FORMAT_LABEL, FORMATS, SP_FEATURE_LABEL, THEMES, type Language, type Product, type Storefront } from "@/lib/types";
 
-type Rec = Omit<StoreRecord, "editToken">;
 type Editing = { kind: "profile" } | { kind: "product"; i: number } | null;
 
 const REGEN_HINTS = ["Different product ideas", "Lower prices", "More premium", "Shorter, punchier copy", "More personal tone"];
@@ -34,14 +22,10 @@ const UNLOCKS = [
 ];
 
 export default function Studio({ id }: { id: string }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [rec, setRec] = useState<Rec | null>(null);
+  const [rec, setRec] = useState<LocalStore | null>(null);
   const [draft, setDraft] = useState<Storefront | null>(null);
-  const [stats, setStats] = useState<StoreStats>({ views: 0, clicks: [], waitlist: [] });
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [doneSteps, setDoneSteps] = useState<number[]>([]);
-  const pendingFields = useRef<Set<string>>(new Set());
-  const [loadError, setLoadError] = useState("");
+  const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing>(null);
   const [aiHint, setAiHint] = useState("");
@@ -52,99 +36,62 @@ export default function Studio({ id }: { id: string }) {
   const [banners, setBanners] = useState<{ assumption?: string; notice?: string }>({});
   const [publishing, setPublishing] = useState(false);
   const [copied, setCopied] = useState("");
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 4000);
   };
 
-  // ---- load ----
+  // ---- load from this device (no database) ----
   useEffect(() => {
-    const fromHash = new URLSearchParams(window.location.hash.slice(1)).get("k");
-    const t = fromHash || tokenFor(id);
-    if (!t) {
-      // Token lives in the URL hash / localStorage, which only exist after mount.
+    const r = getLocalStore(id);
+    if (!r) {
+      // localStorage only exists in the browser, so this runs after mount.
        
-      setLoadError("forbidden");
+      setLoadError(true);
       return;
     }
-    setToken(t);
+    setRec(r);
+    setDraft({ ...r.draft, plan: r.draft.plan || [] });
     const flash = readFlash(id);
     if (flash) setBanners(flash);
     try {
       setDoneSteps(JSON.parse(localStorage.getItem(`sf:plan:${id}`) || "[]"));
     } catch {}
-    fetch(`/api/stores/${id}`, { headers: { "x-edit-token": t } })
-      .then(async (r) => {
-        if (r.status === 404) throw new Error("missing");
-        if (r.status === 403) throw new Error("forbidden");
-        if (!r.ok) throw new Error("error");
-        return r.json();
-      })
-      .then((data: { record: Rec; stats: StoreStats; waitlist: WaitlistEntry[] }) => {
-        setRec(data.record);
-        setDraft({ ...data.record.draft, plan: data.record.draft.plan || [] });
-        setStats(data.stats);
-        setWaitlist(data.waitlist || []);
-        if (fromHash) {
-          const c = data.record.draft.creator;
-          rememberStore({ id, token: t, name: c.handle ? `@${c.handle}` : c.displayName, at: Date.now() });
-        }
-      })
-      .catch((e: Error) => setLoadError(e.message));
   }, [id]);
 
-  // ---- autosave ----
-  const persist = useCallback(
-    (next: Storefront) => {
-      if (!token) return;
-      setSave("saving");
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        const fields = [...pendingFields.current];
-        pendingFields.current.clear();
-        try {
-          const r = await fetch(`/api/stores/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json", "x-edit-token": token },
-            body: JSON.stringify({ draft: next, fields }),
-          });
-          setSave(r.ok ? "saved" : "error");
-        } catch {
-          setSave("error");
-        }
-      }, 700);
-    },
-    [id, token],
-  );
+  // ---- autosave to this device ----
+  const persist = useCallback((next: Storefront, field?: string) => {
+    setRec((r) => {
+      if (!r) return r;
+      const edits = field ? { ...r.edits, [field]: (r.edits[field] || 0) + 1 } : r.edits;
+      const u: LocalStore = { ...r, draft: next, edits, updatedAt: Date.now() };
+      setSave(saveLocalStore(u) ? "saved" : "error");
+      return u;
+    });
+  }, []);
 
   /** `field` names what the creator changed, for the edit-depth metric (which AI fields people fix). */
   const update = (fn: (d: Storefront) => Storefront, field?: string) => {
-    if (field) pendingFields.current.add(field);
     setDraft((d) => {
       if (!d) return d;
       const next = fn(structuredClone(d));
-      persist(next);
+      persist(next, field);
       return next;
     });
   };
 
   // ---- AI regenerate (whole page or one part) ----
   async function regen(target: string, hint = "", language?: Language) {
-    if (!draft || !token || busy) return;
+    if (!draft || !rec || busy) return;
     setBusy(target);
     setEditing(null);
     setRegenOpen(false);
     setAiHint("");
-    const body = { target, hint, draft: language ? { ...draft, language } : draft };
+    const body = { target, hint, input: rec.input, draft: language ? { ...draft, language } : draft };
     try {
       const call = async () => {
-        const r = await fetch(`/api/stores/${id}/regenerate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-edit-token": token },
-          body: JSON.stringify(body),
-        });
+        const r = await fetch(`/api/regenerate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
         return { r, data: await r.json().catch(() => ({})) };
       };
       let { r, data } = await call();
@@ -156,7 +103,7 @@ export default function Studio({ id }: { id: string }) {
       }
       if (!r.ok) throw new Error(data.error || "The AI couldn't respond just now. Your store is unchanged.");
       setDraft(data.draft);
-      setSave("saved");
+      persist(data.draft);
       if (target === "all") {
         setBanners({});
         dismissFlash(id);
@@ -169,34 +116,21 @@ export default function Studio({ id }: { id: string }) {
     }
   }
 
-  // ---- waitlist: remove a sign-up (followers can ask to be deleted) ----
-  async function removeSignup(wl: WaitlistEntry) {
-    if (!token || !confirm(`Remove ${wl.name} from the waitlist? Their number is deleted.`)) return;
-    const r = await fetch(`/api/stores/${id}/waitlist`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json", "x-edit-token": token },
-      body: JSON.stringify({ index: wl.index, phone: wl.phone }),
-    }).catch(() => null);
-    if (!r?.ok) return showToast("Couldn't remove that. Try again.");
-    setWaitlist((list) => list.filter((x) => !(x.index === wl.index && x.phone === wl.phone)));
-    setStats((s) => ({ ...s, waitlist: s.waitlist.map((n, i) => (i === wl.index ? Math.max(0, n - 1) : n)) }));
-    showToast("Removed");
-  }
-
-  // ---- publish ----
+  // ---- publish: the server checks the draft and returns a self-contained share link ----
   async function publish() {
-    if (!draft || !token) return;
+    if (!draft || !rec) return;
     setPublishing(true);
     try {
-      const r = await fetch(`/api/stores/${id}/publish`, {
+      const r = await fetch(`/api/publish`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-edit-token": token },
-        body: JSON.stringify({ draft }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft, input: rec.input, first: !rec.publicPath }),
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || "Couldn't publish. Please try again.");
-      setRec((x) => (x ? { ...x, published: structuredClone(draft), publishedAt: data.publishedAt, slug: data.slug } : x));
-      setSave("saved");
+      const u: LocalStore = { ...rec, draft, publicPath: data.path, publishedDraft: structuredClone(draft), updatedAt: Date.now() };
+      saveLocalStore(u);
+      setRec(u);
       setShareOpen(true);
     } catch (e) {
       showToast(e instanceof Error ? e.message : "Couldn't publish. Please try again.");
@@ -207,17 +141,11 @@ export default function Studio({ id }: { id: string }) {
 
   // ---- states ----
   if (loadError) {
-    const msg =
-      loadError === "missing"
-        ? "We couldn't find this store. It may have been created on a different link."
-        : loadError === "forbidden"
-          ? "Open this store from the device you created it on, or use your private edit link."
-          : "We couldn't load your store. Check your connection and refresh.";
     return (
       <main className="flex min-h-dvh items-center justify-center px-6 text-center">
         <div className="max-w-sm">
           <p className="text-4xl">🧭</p>
-          <p className="mt-4 text-base">{msg}</p>
+          <p className="mt-4 text-base">We couldn&apos;t find this draft on this device. Drafts are saved in the browser you built them in.</p>
           <Link href="/" className="mt-6 inline-block rounded-xl bg-ink px-5 py-3 text-sm font-bold text-lime">
             Build a new store
           </Link>
@@ -233,10 +161,9 @@ export default function Studio({ id }: { id: string }) {
     );
   }
 
-  const published = !!rec.published;
-  const dirty = published && JSON.stringify(rec.published) !== JSON.stringify(draft);
-  const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/s/${rec.slug}` : `/s/${rec.slug}`;
-  const editUrl = typeof window !== "undefined" ? `${window.location.origin}/studio/${id}#k=${token}` : "";
+  const published = !!rec.publicPath;
+  const dirty = published && JSON.stringify(rec.publishedDraft) !== JSON.stringify(draft);
+  const publicUrl = rec.publicPath ? (typeof window !== "undefined" ? `${window.location.origin}${rec.publicPath}` : rec.publicPath) : "";
   const editingProduct = editing?.kind === "product" ? draft.products[editing.i] : null;
 
   const setProduct = (i: number, patch: Partial<Product>) =>
@@ -252,7 +179,6 @@ export default function Studio({ id }: { id: string }) {
       localStorage.setItem(`sf:plan:${id}`, JSON.stringify(next));
     } catch {}
   };
-  const totalWaitlist = waitlist.length;
 
   async function copy(text: string, what: string) {
     try {
@@ -272,7 +198,6 @@ export default function Studio({ id }: { id: string }) {
           <Link href="/" className="text-sm font-semibold text-neutral-600">← New</Link>
           <div className="text-center text-xs text-neutral-500">
             {busy ? "AI is writing…" : save === "saving" ? "Saving…" : save === "error" ? "⚠ Not saved — check connection" : published ? (dirty ? "Unpublished changes" : "Live ✓") : "Draft · saved"}
-            {published && <span className="ml-1">· 👁 {stats.views}</span>}
           </div>
           <div className="flex gap-1.5" aria-label="Theme">
             {THEMES.map((t) => (
@@ -316,9 +241,7 @@ export default function Studio({ id }: { id: string }) {
         )}
         <div className="flex items-center justify-between px-4 pt-3 text-xs text-neutral-500">
           <span>Tap any text to edit · ↻ for a new AI version</span>
-          <button onClick={() => copy(editUrl, "edit-top")} className="font-semibold text-violet">
-            {copied === "edit-top" ? "Copied ✓" : "🔗 Save edit link"}
-          </button>
+          <span>💾 Saved on this device</span>
         </div>
 
         <div className="mt-2 overflow-hidden rounded-3xl shadow-sm">
@@ -326,8 +249,6 @@ export default function Studio({ id }: { id: string }) {
             store={draft}
             mode="edit"
             busy={busy}
-            clicks={published ? stats.clicks : undefined}
-            joins={published ? stats.waitlist : undefined}
             onEditProfile={() => setEditing({ kind: "profile" })}
             onEditProduct={(i) => setEditing({ kind: "product", i })}
             onRegen={(t) => regen(t)}
@@ -373,56 +294,29 @@ export default function Studio({ id }: { id: string }) {
             </ol>
           </section>
 
-          {/* Waitlist */}
+          {/* Waitlist → WhatsApp */}
           <section className="rounded-3xl bg-white p-5 brut">
-            <h3 className="font-display text-lg font-extrabold">🙋 Waitlist {totalWaitlist > 0 && <span className="text-violet">· {totalWaitlist}</span>}</h3>
-            {!published ? (
-              <p className="mt-1 text-sm text-neutral-500">Publish your store. When followers tap a product, they join its waitlist and show up here, so you know what to make first.</p>
-            ) : totalWaitlist === 0 ? (
-              <p className="mt-1 text-sm text-neutral-500">No one yet. Share your link in your bio and stories. Each product button collects sign-ups.</p>
-            ) : (
-              <>
-                <div className="mt-3 space-y-1.5">
-                  {draft.products.map((p, i) => {
-                    const n = stats.waitlist[i] || 0;
-                    const max = Math.max(1, ...stats.waitlist);
-                    return (
-                      <div key={i} className="text-xs">
-                        <div className="flex justify-between">
-                          <span className="truncate pr-2">{p.title}</span>
-                          <b>{n}</b>
-                        </div>
-                        <div className="mt-1 h-1.5 rounded-full bg-neutral-100">
-                          <div className="h-1.5 rounded-full bg-violet" style={{ width: `${(n / max) * 100}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <ul className="mt-4 divide-y divide-neutral-100">
-                  {waitlist
-                    .slice()
-                    .reverse()
-                    .slice(0, 20)
-                    .map((wl, i) => (
-                      <li key={i} className="flex items-center justify-between py-2 text-sm">
-                        <span>
-                          <b>{wl.name}</b>
-                          <span className="block text-xs text-neutral-500">{draft.products[wl.index]?.title || "Product"}</span>
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <a href={`https://wa.me/91${wl.phone}`} target="_blank" rel="noopener noreferrer" className="rounded-full bg-[#25D366] px-3 py-1 text-xs font-bold text-white">
-                            WhatsApp
-                          </a>
-                          <button onClick={() => removeSignup(wl)} aria-label={`Remove ${wl.name}`} className="rounded-full border-2 border-ink/20 px-2 py-0.5 text-xs font-bold text-neutral-500">
-                            ✕
-                          </button>
-                        </span>
-                      </li>
-                    ))}
-                </ul>
-              </>
-            )}
+            <h3 className="font-display text-lg font-extrabold">🙋 Where your waitlist goes</h3>
+            <p className="mt-1 text-sm text-neutral-600">
+              When a follower taps a product, a ready-to-send message opens in WhatsApp to you: &ldquo;I&apos;d like to join the waitlist for …&rdquo;. Count the requests per product to know what to make first.
+            </p>
+            <Field label="Your WhatsApp number" hint={draft.creator.whatsapp ? "✓ Followers can message you. Republish after changing it." : draft.creator.handle ? `Optional. Without it, requests go to your Instagram DMs (@${draft.creator.handle}).` : "Add it so followers can reach you."}>
+              <div className="flex items-center rounded-xl border border-neutral-200 bg-neutral-50 px-3 focus-within:border-violet">
+                <span className="text-neutral-500">+91</span>
+                <input
+                  inputMode="numeric"
+                  maxLength={14}
+                  placeholder="98765 43210"
+                  defaultValue={draft.creator.whatsapp || ""}
+                  onBlur={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(-10);
+                    if (digits && !/^[6-9]\d{9}$/.test(digits)) return showToast("Enter a 10-digit Indian mobile number.");
+                    update((d) => ({ ...d, creator: { ...d.creator, whatsapp: digits } }), "whatsapp");
+                  }}
+                  className="w-full bg-transparent px-2 py-2.5 text-base outline-none"
+                />
+              </div>
+            </Field>
           </section>
 
           {/* Unlock next */}
@@ -603,10 +497,8 @@ export default function Studio({ id }: { id: string }) {
           <b>Next:</b> put this link in your Instagram bio (Edit profile → Links), then post a story about your first product.
         </p>
         <div className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
-          There&apos;s no login yet, so save your private edit link to change your store later from any device.
-          <button onClick={() => copy(editUrl, "edit")} className="mt-1 block font-bold underline underline-offset-2">
-            {copied === "edit" ? "Copied ✓" : "Copy my private edit link"}
-          </button>
+          No login yet: your draft is saved on this device. Edit and tap &ldquo;Update live page&rdquo; to get a fresh link with your changes.
+          {!draft.creator.whatsapp && " Tip: add your WhatsApp number in the editor so waitlist requests reach you."}
         </div>
       </Sheet>
 

@@ -162,6 +162,7 @@ export interface Creator {
   tagline: string;
   bio: string;
   niche: string;
+  whatsapp?: string; // creator's 10-digit Indian mobile; waitlist requests arrive here
 }
 
 export interface Storefront {

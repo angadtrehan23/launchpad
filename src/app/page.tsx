@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { askFromBrowser } from "@/lib/browserAi";
-import { listSaved, rememberStore, setFlash, type SavedStore } from "@/lib/local";
+import { listSaved, saveLocalStore, setFlash, type SavedStore } from "@/lib/local";
 import {
   EARNING_LABEL,
   EARNINGS,
@@ -214,15 +214,17 @@ export default function Home() {
       });
       const data = await res.json().catch(() => ({ status: "error" }));
       if (data.status === "ok") {
-        const handle = w.platforms.find((p) => p.platform === "instagram")?.handle || w.platforms.find((p) => p.handle)?.handle;
-        rememberStore({ id: data.id, token: data.editToken, name: handle ? `@${handle.replace(/^@/, "")}` : direction.title, at: Date.now() });
-        setFlash(data.id, { assumption: data.assumption, notice: data.notice });
+        // No database: the draft is kept in this browser and opened in the editor.
+        const id = crypto.randomUUID().slice(0, 12);
+        const now = Date.now();
+        saveLocalStore({ id, input: data.input, draft: data.draft, source: data.source, publicPath: null, publishedDraft: null, edits: {}, createdAt: now, updatedAt: now });
+        setFlash(id, { assumption: data.assumption, notice: data.notice });
         try {
           sessionStorage.removeItem(WIZARD_KEY);
         } catch {}
         // Full page load (not client routing): the most reliable hand-off to the editor on a phone.
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign(`/studio/${data.id}#k=${data.editToken}`);
+        window.location.assign(`/studio/${id}`);
         return;
       }
       setStep("directions");
@@ -367,7 +369,7 @@ export default function Home() {
               <div className="mt-6 rounded-2xl bg-white p-3 brut-sm">
                 <p className="px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Continue editing</p>
                 {saved.slice(0, 3).map((s) => (
-                  <button key={s.id} onClick={() => router.push(`/studio/${s.id}#k=${s.token}`)} className="mt-1 flex w-full items-center justify-between rounded-xl px-2 py-2 text-left text-sm font-medium hover:bg-neutral-50">
+                  <button key={s.id} onClick={() => router.push(`/studio/${s.id}`)} className="mt-1 flex w-full items-center justify-between rounded-xl px-2 py-2 text-left text-sm font-medium hover:bg-neutral-50">
                     {s.name} <span className="text-neutral-400">→</span>
                   </button>
                 ))}

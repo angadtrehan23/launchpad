@@ -1,6 +1,7 @@
 import { aiCooldownSecs, generateStore, regeneratePlan, regenerateProduct, regenerateProfile } from "@/lib/ai";
-import { saveStore } from "@/lib/db";
-import { aiRateLimit, json, loadAuthed, sanitizeDraft } from "@/lib/server";
+import { checkInput } from "@/lib/input";
+import { aiRateLimit, json, sanitizeDraft } from "@/lib/server";
+import type { Storefront } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -13,21 +14,27 @@ function failed() {
 }
 
 /**
- * Regenerate the whole page or one part. Non-destructive: if the model fails,
- * the creator's current content is untouched and they get a friendly error.
+ * Regenerate the whole page or one part. Stateless: the browser sends its current draft and the
+ * creator's original answers; we return the new draft. Non-destructive: on failure nothing changes.
  */
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const rec = await loadAuthed(req, id);
-  if (rec instanceof Response) return rec;
+export async function POST(req: Request) {
   const limited = await aiRateLimit(req, "regen");
   if (limited) return limited;
+  const body = (await req.json().catch(() => ({}))) as { target?: string; hint?: string; draft?: unknown; input?: Record<string, unknown> };
+  const check = checkInput(body.input || {}, true);
+  if (!check.ok) return json({ error: "We lost your original answers. Build the store again from the start." }, 400);
 
-  const body = (await req.json().catch(() => ({}))) as { target?: string; hint?: string; draft?: unknown };
   const target = String(body.target || "all");
   const hint = typeof body.hint === "string" ? body.hint.slice(0, 200).trim() : "";
-  const current = sanitizeDraft(body.draft, rec.draft); // the creator's latest edits, even if not autosaved yet
-  const input = { ...rec.input, language: current.language };
+  const fallback: Storefront = {
+    creator: { displayName: "", handle: check.input.handle, tagline: "", bio: "", niche: "" },
+    products: [],
+    plan: [],
+    theme: "candy",
+    language: check.input.language,
+  };
+  const current = sanitizeDraft(body.draft, fallback);
+  const input = { ...check.input, language: current.language };
 
   try {
     if (target === "profile") {
@@ -53,22 +60,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         confirmed: current.creator,
       });
       if (result.kind !== "ok" || result.source !== "ai") return failed();
-      current.creator = { ...result.store.creator, handle: current.creator.handle };
+      current.creator = { ...result.store.creator, handle: current.creator.handle, whatsapp: current.creator.whatsapp };
       current.products = result.store.products;
       current.plan = result.store.plan;
-      rec.source = "ai";
     }
   } catch (err) {
     console.error("[regenerate] failed", target, err instanceof Error ? err.message : err);
     return failed();
   }
-
-  rec.draft = current;
-  rec.updatedAt = new Date().toISOString();
-  if (rec.metrics) {
-    const key = target.startsWith("product:") ? "product" : target;
-    rec.metrics.regens[key] = (rec.metrics.regens[key] || 0) + 1;
-  }
-  await saveStore(rec);
-  return json({ draft: rec.draft });
+  return json({ draft: current });
 }
