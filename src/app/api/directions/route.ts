@@ -19,7 +19,9 @@ export async function POST(req: Request) {
   if (limited) return limited;
 
   const avoid = Array.isArray(body.avoid) ? body.avoid.filter((x): x is string => typeof x === "string").slice(0, 9) : [];
-  const result = await generateDirections(check.input, avoid);
+  // aiText: the reply the visitor's browser already got from the free AI (own quota, no shared cooldown).
+  const aiText = typeof body.aiText === "string" && body.aiText.length < 20000 ? body.aiText : undefined;
+  const result = await generateDirections(check.input, avoid, aiText);
   if (result.kind === "needs_more") {
     return json({ status: "needs_more", reason: "model", message: result.question, canForce: false });
   }

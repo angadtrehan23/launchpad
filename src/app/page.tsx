@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { askFromBrowser } from "@/lib/browserAi";
 import { listSaved, rememberStore, setFlash, type SavedStore } from "@/lib/local";
 import {
   EARNING_LABEL,
@@ -67,6 +68,7 @@ export default function Home() {
   const [customKw, setCustomKw] = useState("");
   const [buildStep, setBuildStep] = useState(0);
   const [slow, setSlow] = useState(false);
+  const [waitNote, setWaitNote] = useState("");
   const [saved, setSaved] = useState<SavedStore[]>([]);
   const topRef = useRef<HTMLDivElement>(null);
   const dirsKey = useRef("");
@@ -90,9 +92,15 @@ export default function Home() {
     if (step !== "building") return;
     const t = setInterval(() => setBuildStep((s) => Math.min(s + 1, BUILD_STEPS.length - 1)), 3500);
     const s = setTimeout(() => setSlow(true), 25000);
+    // Hard escape: never leave a creator on this screen. Their answers are saved for a retry.
+    const bail = setTimeout(() => {
+      setStep("directions");
+      setError("This took too long. Your answers are saved, so tap Build again.");
+    }, 150000);
     return () => {
       clearInterval(t);
       clearTimeout(s);
+      clearTimeout(bail);
     };
   }, [step]);
 
@@ -163,10 +171,12 @@ export default function Home() {
     setPicked(null);
     go("directions");
     try {
+      // The visitor's browser asks the free AI itself (own quota); the server checks the reply.
+      const aiText = await askFromBrowser("directions", { ...w, avoid, force });
       const res = await fetch("/api/directions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...w, avoid, force }),
+        body: JSON.stringify({ ...w, avoid, force, aiText }),
       });
       const data = await res.json().catch(() => ({ status: "error" }));
       if (data.status === "ok") {
@@ -190,14 +200,16 @@ export default function Home() {
   async function build(direction: Direction) {
     setBuildStep(0);
     setSlow(false);
+    setWaitNote("");
     setStep("building");
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 70000);
+    const timer = setTimeout(() => ctrl.abort(), 130000);
     try {
+      const aiText = await askFromBrowser("store", { ...w, direction }, (secs) => setWaitNote(`The free AI asks us to wait ${secs}s between requests. Hang tight…`));
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...w, direction, directionsShown: shownCount }),
+        body: JSON.stringify({ ...w, direction, directionsShown: shownCount, aiText }),
         signal: ctrl.signal,
       });
       const data = await res.json().catch(() => ({ status: "error" }));
@@ -208,7 +220,9 @@ export default function Home() {
         try {
           sessionStorage.removeItem(WIZARD_KEY);
         } catch {}
-        router.push(`/studio/${data.id}#k=${data.editToken}`);
+        // Full page load (not client routing): the most reliable hand-off to the editor on a phone.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign(`/studio/${data.id}#k=${data.editToken}`);
         return;
       }
       setStep("directions");
@@ -245,7 +259,7 @@ export default function Home() {
               </li>
             ))}
           </ul>
-          <p className="mt-6 text-center text-xs text-neutral-500">{slow ? "Taking a little longer than usual. Almost there." : "Usually takes 15–30 seconds."}</p>
+          <p className="mt-6 text-center text-xs text-neutral-500">{waitNote || (slow ? "Taking a little longer than usual. Almost there." : "Usually takes 15–30 seconds.")}</p>
         </div>
       </main>
     );

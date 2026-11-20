@@ -20,7 +20,8 @@ export async function POST(req: Request) {
   const limited = await aiRateLimit(req, "generate");
   if (limited) return limited;
 
-  const result = await generateStore(check.input, { force, theme });
+  const aiText = typeof body.aiText === "string" && body.aiText.length < 40000 ? body.aiText : undefined;
+  const result = await generateStore(check.input, { force, theme, prefetched: aiText });
   if (result.kind === "needs_more") {
     return json({ status: "needs_more", reason: "model", message: result.question, canForce: true });
   }

@@ -149,6 +149,47 @@ function unwrap(value: unknown, keys: string[]): unknown {
   return v;
 }
 
+export type ChatMessage = { role: string; content: string };
+
+function schemaKeys(schema: z.ZodType): string[] {
+  return Object.keys((z.toJSONSchema(schema) as JsonSchema).properties || {});
+}
+
+/** System + user messages, with a filled-in example of the exact JSON shape (works for small open models). */
+export function buildMessages(schema: z.ZodType, system: string, userPrompt: string): ChatMessage[] {
+  const json = z.toJSONSchema(schema) as JsonSchema;
+  const keys = Object.keys(json.properties || {});
+  const shape = JSON.stringify(skeleton(json));
+  return [
+    {
+      role: "system",
+      content: `${system}\n\n# Output format\nReply with ONE JSON object only: no prose, no markdown fences, no wrapper key. Use exactly this shape and these top-level keys (${keys.join(", ")}). Every product must be a full object, never a plain string. Replace every "…" and 0 with real content. Where you see "a|b|c", pick exactly one of those values. Arrays may have as many items as the instructions ask for:\n${shape}`,
+    },
+    { role: "user", content: userPrompt },
+  ];
+}
+
+/** Accept "almost right" replies in one shot: drop non-object products, default a missing plan or list. */
+function lenient(value: unknown): unknown {
+  if (!value || typeof value !== "object") return value;
+  const o = { ...(value as Record<string, unknown>) };
+  if (Array.isArray(o.products)) o.products = o.products.filter((x) => x && typeof x === "object");
+  if ("products" in o && !Array.isArray(o.plan)) o.plan = [];
+  if (Array.isArray(o.plan)) o.plan = o.plan.filter((x) => x && typeof x === "object");
+  if ("creator" in o || "directions" in o) {
+    if (typeof o.followUpQuestion !== "string") o.followUpQuestion = "";
+    if (typeof o.assumption !== "string" && "creator" in o) o.assumption = "";
+  }
+  return o;
+}
+
+/** Parse a reply produced elsewhere (the visitor's browser) with the same rules as our own calls. */
+export function parseReply<S extends z.ZodType>(schema: S, text: string): z.infer<S> {
+  const parsed = schema.safeParse(lenient(coerceEnums(unwrap(extractJson(text), schemaKeys(schema)))));
+  if (!parsed.success) throw new ModelOutputError("schema");
+  return parsed.data as z.infer<S>;
+}
+
 /** OpenAI-compatible chat call that must return JSON matching `schema`; one in-call repair on bad JSON. */
 /** When the free tier last told us to wait (per server instance). Lets the UI say "ready in ~Ns". */
 let cooldownUntil = 0;
@@ -160,16 +201,8 @@ async function callOpenAICompat<S extends z.ZodType>(schema: S, system: string, 
   const deadline = Date.now() + timeoutMs;
   // Known cooldown longer than our budget: don't waste a request.
   if (cooldownUntil - Date.now() > timeoutMs - 7_000) throw new ProviderError("rate_limit", `cooling down ${aiCooldownSecs()}s`);
-  const json = z.toJSONSchema(schema) as JsonSchema;
-  const keys = Object.keys(json.properties || {});
-  const shape = JSON.stringify(skeleton(json));
-  const messages: { role: string; content: string }[] = [
-    {
-      role: "system",
-      content: `${system}\n\n# Output format\nReply with ONE JSON object only: no prose, no markdown fences, no wrapper key. Use exactly this shape and these top-level keys (${keys.join(", ")}). Replace every "…" and 0 with real content. Where you see "a|b|c", pick exactly one of those values. Arrays may have as many items as the instructions ask for:\n${shape}`,
-    },
-    { role: "user", content: userPrompt },
-  ];
+  const keys = schemaKeys(schema);
+  const messages = buildMessages(schema, system, userPrompt);
   for (let attempt = 1; attempt <= 2; attempt++) {
     const remaining = deadline - Date.now();
     if (remaining < 4000) throw new ModelOutputError("timeout");
@@ -210,7 +243,7 @@ async function callOpenAICompat<S extends z.ZodType>(schema: S, system: string, 
       clearTimeout(timer);
     }
     try {
-      const parsed = schema.safeParse(coerceEnums(unwrap(extractJson(text), keys)));
+      const parsed = schema.safeParse(lenient(coerceEnums(unwrap(extractJson(text), keys))));
       if (parsed.success) return parsed.data as z.infer<S>;
       console.warn(`[llm] schema mismatch: ${parsed.error.issues.slice(0, 8).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")} | reply: ${text.slice(0, 300).replace(/\s+/g, " ")}`);
       if (attempt === 2) throw new ModelOutputError("schema");
@@ -346,7 +379,7 @@ function reviewStore(raw: z.infer<typeof StoreOut>, input: CreatorInput) {
   const seen = new Set<string>();
   products = products.filter((p) => !seen.has(p.title.toLowerCase()) && seen.add(p.title.toLowerCase()));
   const plan = reviewPlan(raw.plan);
-  if (plan.length < 3) issues.push("The launch plan needs 5 steps.");
+  if (plan.length < 3) plan.splice(0, plan.length, ...starterStore(input).plan); // rules-based plan instead of another AI call
   const creator = {
     displayName: clip(raw.creator.displayName, 40) || input.handle || "Creator",
     handle: input.handle,
@@ -427,10 +460,22 @@ export type DirectionsResult =
   | { kind: "ok"; directions: Direction[]; source: "ai" | "starter"; ms: number }
   | { kind: "needs_more"; question: string };
 
-export async function generateDirections(input: CreatorInput, avoid: string[] = []): Promise<DirectionsResult> {
+export function directionsMessages(input: CreatorInput, avoid: string[] = []): ChatMessage[] {
+  return buildMessages(DirectionsOut, DIRECTIONS_SYSTEM, directionsPrompt(input, avoid));
+}
+export function storeMessages(input: CreatorInput, opts: { force?: boolean } = {}): ChatMessage[] {
+  return buildMessages(StoreOut, STORE_SYSTEM, fullStorePrompt(input, opts));
+}
+
+export async function generateDirections(input: CreatorInput, avoid: string[] = [], prefetched?: string): Promise<DirectionsResult> {
+  let usePrefetched = !!prefetched;
   let needsMore = "";
   const r = await withDeadline("directions", async (timeout) => {
-    const raw = await callModel(DirectionsOut, DIRECTIONS_SYSTEM, directionsPrompt(input, avoid), timeout);
+    let raw: z.infer<typeof DirectionsOut>;
+    if (usePrefetched) {
+      usePrefetched = false; // only the first attempt; a retry calls the model from the server
+      raw = parseReply(DirectionsOut, prefetched!);
+    } else raw = await callModel(DirectionsOut, DIRECTIONS_SYSTEM, directionsPrompt(input, avoid), timeout);
     if (raw.status === "needs_more_info") {
       needsMore = clip(raw.followUpQuestion, 200) || "Tell us a bit more about what you post and who follows you.";
       return { value: [] as Direction[], issues: [] };
@@ -459,12 +504,17 @@ export type GenerateResult =
 
 export async function generateStore(
   input: CreatorInput,
-  opts: { force?: boolean; avoidTitles?: string[]; hint?: string; theme?: Storefront["theme"]; confirmed?: Storefront["creator"] } = {},
+  opts: { force?: boolean; avoidTitles?: string[]; hint?: string; theme?: Storefront["theme"]; confirmed?: Storefront["creator"]; prefetched?: string } = {},
 ): Promise<GenerateResult> {
+  let usePrefetched = !!opts.prefetched;
   let needsMore = "";
   let assumption = "";
   const r = await withDeadline("generate", async (timeout, feedback) => {
-    const raw = await callModel(StoreOut, STORE_SYSTEM, fullStorePrompt(input, { ...opts, feedback }), timeout);
+    let raw: z.infer<typeof StoreOut>;
+    if (usePrefetched) {
+      usePrefetched = false;
+      raw = parseReply(StoreOut, opts.prefetched!);
+    } else raw = await callModel(StoreOut, STORE_SYSTEM, fullStorePrompt(input, { ...opts, feedback }), timeout);
     if (raw.status === "needs_more_info" && !opts.force && !input.direction) {
       needsMore = clip(raw.followUpQuestion, 200) || "Tell us a bit more about what you post and who follows you.";
       return { value: null, issues: [] };
