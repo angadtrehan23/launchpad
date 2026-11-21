@@ -44,7 +44,7 @@ function SectionTools({ onEdit, onRegen, busy }: { onEdit?: () => void; onRegen?
 function Shimmer() {
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-[2px]">
-      <span className="rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white">✨ Rewriting…</span>
+      <span className="rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white">Updating…</span>
     </div>
   );
 }
@@ -64,14 +64,18 @@ export default function StoreView({ store, mode, busy, clicks, joins, onEditProf
           {(busy === "profile" || allBusy) && <Shimmer />}
           <div className="relative h-32 w-full overflow-hidden" style={{ background: "var(--sf-hero)" }}>
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/20" />
-            {!edit && (<div className="wiggle absolute right-6 top-5 rounded-full border-2 border-black/80 bg-[#c6ff3d] px-2.5 py-1 text-[11px] font-extrabold text-black">✦ new drops</div>)}
             <div className="absolute -bottom-16 left-6 h-32 w-32 rounded-full bg-white/10" />
           </div>
           <div className="relative z-10 -mt-12 px-5 text-center">
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full font-display text-3xl font-extrabold text-white" style={{ background: "var(--sf-hero)", border: "4px solid var(--sf-bg)", boxShadow: "var(--sf-shadow)" }}>
-              {initials(creator.displayName)}
+            <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-full font-display text-3xl font-bold text-white" style={{ background: "var(--sf-hero)", border: "4px solid var(--sf-bg)", boxShadow: "var(--sf-shadow)" }}>
+              {creator.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={creator.avatar} alt={creator.displayName} className="h-full w-full rounded-full object-cover" />
+              ) : (
+                initials(creator.displayName)
+              )}
             </div>
-            <h1 onClick={edit ? onEditProfile : undefined} className={`mt-3 font-display text-[28px] font-extrabold leading-tight ${edit ? "cursor-text" : ""}`}>
+            <h1 onClick={edit ? onEditProfile : undefined} className={`mt-3 font-display text-[28px] font-bold leading-tight ${edit ? "cursor-text" : ""}`}>
               {creator.displayName || "Your name"}
             </h1>
             {creator.handle &&
@@ -107,7 +111,7 @@ export default function StoreView({ store, mode, busy, clicks, joins, onEditProf
                 <div className="flex flex-wrap items-center gap-1.5 pr-32">
                   <span className="inline-block rounded-full bg-[var(--sf-chip)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide" style={{ border: "var(--sf-border) solid var(--sf-line)" }}>{FORMAT_LABEL[p.format]}</span>
                 </div>
-                <h2 onClick={edit ? () => onEditProduct?.(i) : undefined} className={`mt-3 font-display text-xl font-extrabold leading-snug ${edit ? "cursor-text" : ""}`}>
+                <h2 onClick={edit ? () => onEditProduct?.(i) : undefined} className={`mt-3 font-display text-xl font-bold leading-snug ${edit ? "cursor-text" : ""}`}>
                   {p.title || "Untitled product"}
                 </h2>
                 <p onClick={edit ? () => onEditProduct?.(i) : undefined} className={`mt-2 text-[15px] leading-relaxed text-[var(--sf-muted)] ${edit ? "cursor-text" : ""}`}>
@@ -126,14 +130,14 @@ export default function StoreView({ store, mode, busy, clicks, joins, onEditProf
                 <div className="mt-5 flex items-end justify-between gap-3">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--sf-muted)]">{bookable ? "Limited slots" : "Early access price"}</div>
-                    <div className="font-display text-[28px] font-extrabold leading-none">{p.priceInr > 0 ? formatInr(p.priceInr) : "Free"}</div>
+                    <div className="font-display text-[28px] font-bold leading-none">{p.priceInr > 0 ? formatInr(p.priceInr) : "Free"}</div>
                     {edit && p.priceRationale && (
                       <button type="button" className="mt-0.5 text-xs font-semibold text-[var(--sf-accent)] underline underline-offset-2" onClick={() => setOpenWhy(openWhy === i ? null : i)}>
                         Why {p.priceInr > 0 ? formatInr(p.priceInr) : "free"}?
                       </button>
                     )}
                   </div>
-                  <button type="button" onClick={() => onCta?.(i)} className="press rounded-2xl bg-[var(--sf-accent)] px-5 py-3 text-sm font-extrabold text-[var(--sf-accent-ink)]" style={{ border: "var(--sf-border) solid var(--sf-line)", boxShadow: "var(--sf-shadow)" }}>
+                  <button type="button" onClick={() => onCta?.(i)} className="press rounded-2xl bg-[var(--sf-accent)] px-5 py-3 text-sm font-bold text-[var(--sf-accent-ink)]" style={{ border: "var(--sf-border) solid var(--sf-line)", boxShadow: "var(--sf-shadow)" }}>
                     {p.ctaLabel || (bookable ? "Request a slot" : "Join the waitlist")}
                   </button>
                 </div>

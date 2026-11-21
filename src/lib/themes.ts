@@ -5,14 +5,14 @@ const soft = { "--sf-border": "1px", "--sf-shadow": "0 1px 3px rgba(0,0,0,0.06)"
 
 export const THEME_META: Record<Theme, { label: string; swatch: string; vars: Record<string, string> }> = {
   candy: {
-    label: "Candy",
-    swatch: "linear-gradient(135deg,#ff4fd8,#7b2ff7)",
-    vars: { "--sf-bg": "#fff0fb", "--sf-card": "#ffffff", "--sf-ink": "#1a0b2e", "--sf-muted": "#5f4670", "--sf-accent": "#7b2ff7", "--sf-accent-ink": "#ffffff", "--sf-hero": "linear-gradient(135deg,#ff4fd8 0%,#7b2ff7 100%)", "--sf-chip": "#ffe0f7", "--sf-line": "#1a0b2e", "--sf-border": "2px", "--sf-shadow": "4px 4px 0 #1a0b2e" },
+    label: "Violet",
+    swatch: "linear-gradient(135deg,#8b5cf6,#6d28d9)",
+    vars: { "--sf-bg": "#f8f5ff", "--sf-card": "#ffffff", "--sf-ink": "#1a0b2e", "--sf-muted": "#5f4670", "--sf-accent": "#6d28d9", "--sf-accent-ink": "#ffffff", "--sf-hero": "linear-gradient(135deg,#8b5cf6 0%,#6d28d9 55%,#db2777 130%)", "--sf-chip": "#f1eafe", "--sf-line": "#ece4fb", "--sf-border": "1px", "--sf-shadow": "0 1px 2px rgba(16,24,40,.05), 0 6px 16px rgba(91,33,182,.06)" },
   },
   acid: {
-    label: "Acid",
-    swatch: "linear-gradient(135deg,#c6ff3d,#0b0b0f)",
-    vars: { "--sf-bg": "#0b0b0f", "--sf-card": "#17171d", "--sf-ink": "#f5f5f7", "--sf-muted": "#a8a8b3", "--sf-accent": "#c6ff3d", "--sf-accent-ink": "#0b0b0f", "--sf-hero": "linear-gradient(135deg,#c6ff3d 0%,#5ad8ff 100%)", "--sf-chip": "#2a2a33", "--sf-line": "#c6ff3d", "--sf-border": "2px", "--sf-shadow": "4px 4px 0 #c6ff3d" },
+    label: "Night",
+    swatch: "linear-gradient(135deg,#2a2a33,#0b0b0f)",
+    vars: { "--sf-bg": "#0b0b0f", "--sf-card": "#17171d", "--sf-ink": "#f5f5f7", "--sf-muted": "#a8a8b3", "--sf-accent": "#c6ff3d", "--sf-accent-ink": "#0b0b0f", "--sf-hero": "linear-gradient(135deg,#c6ff3d 0%,#5ad8ff 100%)", "--sf-chip": "#2a2a33", "--sf-line": "#2a2a33", "--sf-border": "1px", "--sf-shadow": "0 1px 2px rgba(0,0,0,.4)" },
   },
   sunset: {
     label: "Sunset",

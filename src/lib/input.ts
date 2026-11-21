@@ -56,6 +56,14 @@ export function looksLikeGibberish(text: string): boolean {
   return false;
 }
 
+/** Profile photo: a small resized data URL from the browser, or a YouTube avatar URL. Anything else is dropped. */
+export function cleanAvatar(v: unknown): string {
+  if (typeof v !== "string") return "";
+  if (/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 14000) return v;
+  if (/^https:\/\/yt3\.(ggpht|googleusercontent)\.com\/[\w\-./=?&%]+$/.test(v) && v.length <= 400) return v;
+  return "";
+}
+
 export function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -122,7 +130,16 @@ export function checkInput(body: Record<string, unknown>, force = false): InputC
   const primary = ig?.handle && isValidInstagramHandle(ig.handle) ? ig.handle : "";
   const anyHandle = primary || platforms.find((p) => p.handle)?.handle || "";
 
+  const name = str(body.name, 40).replace(/\s+/g, " ");
+  const whatsapp = String(body.whatsapp || "").replace(/\D/g, "").slice(-10);
+  const avatar = cleanAvatar(body.avatar);
+  const profileNote = str(body.profileNote, 700);
+
   const input: CreatorInput = {
+    name,
+    whatsapp: /^[6-9]\d{9}$/.test(whatsapp) ? whatsapp : "",
+    avatar,
+    profileNote,
     platforms,
     expertOnly,
     earnings,
@@ -142,7 +159,7 @@ export function checkInput(body: Record<string, unknown>, force = false): InputC
       message: "That doesn't look like an Instagram username. Use letters, numbers, dots or underscores, e.g. @fitwithpriya.",
     };
   }
-  if (!keywords.length && !description && !direction && !anyHandle) {
+  if (!keywords.length && !description && !direction && !anyHandle && !profileNote) {
     return { ok: false, reason: "empty", message: "Pick a few topics you post about, or tell us in a line." };
   }
   if (force || direction) return { ok: true, input };

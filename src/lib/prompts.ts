@@ -5,7 +5,6 @@ import {
   FOLLOWER_LABEL,
   FORMATS,
   PLATFORM_META,
-  SP_FEATURES,
   type CreatorInput,
   type Storefront,
 } from "./types";
@@ -37,13 +36,13 @@ Make the 3 directions genuinely different (different buyer or outcome), and orde
 
 If there is no usable signal at all (gibberish, nothing about what they post), set status to "needs_more_info", write followUpQuestion as one short friendly question, and return an empty directions list. Otherwise status "ok" and followUpQuestion "".`;
 
-/** Step 5: build the store and launch plan for the chosen direction. */
-export const STORE_SYSTEM = `You are the storefront strategist inside a creator store builder for SuperProfile. You turn what a creator told us, and the direction they chose, into a store that can start getting buyers on day one, plus a short launch plan.
+/** Step 5: build the store for the chosen direction. */
+export const STORE_SYSTEM = `You are the storefront strategist inside a creator store builder for SuperProfile. You turn what a creator told us, and the direction they chose, into a store that can start getting buyers on day one.
 
 ${AUDIENCE_CONTEXT}
 
 # What to produce
-creator.displayName: the creator's name if given; otherwise a friendly first name from their username when it clearly contains one ("fitwithpriya" → "Priya"); otherwise a short brand name. Never invent a surname.
+creator.displayName: exactly the name the creator gave (creator_name). Never invent or change a name.
 creator.tagline: max 70 characters. Who they help + the outcome, matching the chosen direction.
 creator.bio: 2–3 sentences, max 280 characters, first person, built only from what they told us.
 creator.niche: 1–4 words.
@@ -55,17 +54,18 @@ products: usually 3 (2 if the input is narrow, never more than 4). Build a value
 - description: 2–3 sentences, max 320 characters, to the buyer: who it's for, what they get, the result.
 - highlights: exactly 3 concrete bullets, max 50 characters each.
 - ctaLabel: max 22 characters. Products aren't built yet, so the button collects interest: for one_on_one and workshop use "Request a slot"-style labels; otherwise "Join the waitlist"-style labels (e.g. "Get early access").
-plan: exactly 5 launch steps for the next 2 weeks, in order. Each has when ("Day 1", "Day 3", "Week 2"…), action (max 120 characters, concrete, in their voice and platforms, e.g. "Post a reel on your top 3 tiffin mistakes and ask people to comment TIFFIN"), and feature: the SuperProfile feature that step uses, one of ${SP_FEATURES.join(", ")}. The plan should: share the store link where they already have people, drive them to the waitlist, create the entry product once enough people join, then open payments and tell the waitlist. Use ONLY the platforms they listed (Instagram Auto-DM "comment X and get the link" works well if they're on Instagram). If they are not on social media, use WhatsApp status and groups, their existing students or clients, LinkedIn and word of mouth instead of reels or bio links.
 
 # Language
 - english: simple, warm Indian English. Short sentences.
 - hinglish: Roman-script Hinglish as Indian creators write on Instagram ("Ghar pe workout, bina gym ke"). Keep format names and prices unchanged.
 
 If the input gives no usable signal, set status "needs_more_info" with one short followUpQuestion, and leave other fields empty. Otherwise status "ok" and followUpQuestion "".
-assumption: if you had to guess something important (their name, their audience), say it in one short sentence to the creator ("We guessed your followers are mostly college students. Edit anything that's off."). Otherwise "".`;
+assumption: if you had to guess something important (their audience, their level), say it in one short sentence to the creator ("We guessed your followers are mostly college students. Edit anything that's off."). Otherwise "".`;
 
 export function inputBlock(input: CreatorInput): string {
   const lines: string[] = [];
+  if (input.name) lines.push(`creator_name: ${input.name}`);
+  if (input.profileNote) lines.push(`real_profile_text (their own bio/captions/channel description): ${input.profileNote}`);
   if (input.expertOnly) lines.push("social_presence: not on social media yet (expert / teacher / professional)");
   for (const p of input.platforms) {
     lines.push(`platform: ${PLATFORM_META[p.platform].label}${p.handle ? ` @${p.handle}` : ""} — ${FOLLOWER_LABEL[p.followers]} followers`);
@@ -115,7 +115,7 @@ export function fullStorePrompt(
     // Small models drift back to English; repeating the rule last, where they read it most, fixes most cases.
     parts.push("IMPORTANT: write the tagline, bio, every title, description, highlight, button label and plan step in Roman-script Hinglish (Hindi words in English letters mixed with English), like Indian creators write on Instagram. Not pure English.");
   }
-  parts.push("Build the storefront and launch plan.");
+  parts.push("Build the storefront.");
   return parts.join("\n\n");
 }
 

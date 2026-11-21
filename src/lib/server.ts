@@ -1,4 +1,5 @@
 import { getStore, slugTaken, underLimit } from "./db";
+import { cleanAvatar } from "./input";
 import { FORMATS, LANGUAGES, SP_FEATURES, THEMES, type PlanStep, type Product, type StoreRecord, type Storefront } from "./types";
 
 export function json(data: unknown, status = 200) {
@@ -94,6 +95,7 @@ export function sanitizeDraft(raw: unknown, fallback: Storefront): Storefront {
       tagline: str(c.tagline, 120),
       bio: str(c.bio, 500),
       niche: str(c.niche, 60),
+      avatar: cleanAvatar(c.avatar),
       whatsapp: /^[6-9]\d{9}$/.test(String(c.whatsapp || "").replace(/\D/g, "").slice(-10)) ? String(c.whatsapp).replace(/\D/g, "").slice(-10) : "",
     },
     products,

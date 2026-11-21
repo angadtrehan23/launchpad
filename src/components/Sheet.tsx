@@ -20,10 +20,10 @@ export default function Sheet({ open, onClose, title, children, footer }: { open
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative flex max-h-[88dvh] w-full max-w-md flex-col rounded-t-3xl border-2 border-ink bg-white text-ink shadow-2xl sm:rounded-3xl">
+      <div className="relative flex max-h-[88dvh] w-full max-w-md flex-col rounded-t-3xl border border-neutral-200 bg-white text-ink shadow-2xl sm:rounded-3xl">
         <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
-          <h3 className="font-display text-lg font-extrabold">{title}</h3>
-          <button onClick={onClose} className="rounded-full border-2 border-ink bg-lime px-3 py-1 text-sm font-bold" aria-label="Close">
+          <h3 className="font-display text-lg font-bold">{title}</h3>
+          <button onClick={onClose} className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-sm font-medium" aria-label="Close">
             Done
           </button>
         </div>

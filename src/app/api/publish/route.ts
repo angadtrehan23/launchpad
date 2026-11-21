@@ -26,6 +26,22 @@ export async function POST(req: Request) {
     return json({ error: `Your page says “${risky[0]}”. We can't publish guaranteed results, cures or income promises. Reword it and publish again.` }, 400);
   }
   if (body.first === true) await funnel("published");
-  const publicDraft: Storefront = { ...draft, plan: [] }; // the launch plan stays private
-  return json({ path: `/s/${encodeStore(publicDraft)}` });
+  const publicDraft: Storefront = { ...draft, plan: [] };
+  const path = `/s/${encodeStore(publicDraft)}`;
+  // The store lives inside its link, so the link is long: shorten it for bios and WhatsApp.
+  const origin = new URL(req.url).origin;
+  const short = await shorten(`${origin}${path}`);
+  return json({ path, short });
+}
+
+/** TinyURL's free, keyless endpoint. Falls back to the long link if it's slow or down. */
+async function shorten(url: string): Promise<string> {
+  if (/localhost|127\.0\.0\.1/.test(url)) return "";
+  try {
+    const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(6000) });
+    const text = (await res.text()).trim();
+    return res.ok && /^https:\/\/tinyurl\.com\/[A-Za-z0-9]+$/.test(text) ? text : "";
+  } catch {
+    return "";
+  }
 }

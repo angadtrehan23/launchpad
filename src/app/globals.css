@@ -1,20 +1,19 @@
 @import "tailwindcss";
 
 /*
- * Launchpad design tokens: a Gen Z "sticker" look.
- * Cream paper, ink outlines, offset shadows, and three loud accents used sparingly:
- * violet = brand / primary, lime = selected / success, pink = highlight / energy.
+ * Launchpad design tokens: clean, course-platform style.
+ * Light grey canvas, white cards, thin borders, soft shadows, one violet accent.
  */
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --color-ink: #0b0b0f;
-  --color-paper: #fffaf0;
-  --color-violet: #7b2ff7;
-  --color-lime: #c6ff3d;
-  --color-pink: #ff4fd8;
-  --color-sky: #5ad8ff;
-  --color-sun: #ffd23f;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #111827;
+  --color-paper: #f7f7fb;
+  --color-violet: #6d28d9;
+  --color-lime: #ede9fe; /* soft violet tint used for selected / done states */
+  --color-pink: #fce7f3;
+  --color-sky: #e0f2fe;
+  --color-sun: #fef3c7;
 }
 
 html,
@@ -28,59 +27,53 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Outlined card/button with a hard offset shadow, like a sticker. */
+/* Card surface: thin border + soft shadow. */
 @utility brut {
-  border: 2px solid var(--color-ink);
-  box-shadow: 4px 4px 0 var(--color-ink);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 4px 12px rgba(16, 24, 40, 0.04);
 }
 @utility brut-sm {
-  border: 2px solid var(--color-ink);
-  box-shadow: 2px 2px 0 var(--color-ink);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
-/* Pressing pushes the sticker into its shadow. */
 @utility press {
-  transition: transform 80ms ease, box-shadow 80ms ease;
+  transition: transform 80ms ease;
   &:active:not(:disabled) {
-    transform: translate(3px, 3px);
-    box-shadow: 1px 1px 0 var(--color-ink);
+    transform: scale(0.98);
   }
 }
 @utility dotted {
-  background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 12%, transparent) 1px, transparent 1px);
-  background-size: 18px 18px;
+  background-image: none;
 }
 @utility font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
-@keyframes marquee {
+@keyframes fadein {
   from {
-    transform: translateX(0);
+    opacity: 0;
+    transform: translateY(4px);
   }
   to {
-    transform: translateX(-50%);
+    opacity: 1;
+    transform: none;
   }
 }
-@utility marquee {
-  animation: marquee 28s linear infinite;
-}
-@keyframes wiggle {
-  0%,
+@keyframes slide {
+  0% {
+    transform: translateX(-110%);
+  }
   100% {
-    transform: rotate(-3deg);
+    transform: translateX(330%);
   }
-  50% {
-    transform: rotate(3deg);
-  }
-}
-@utility wiggle {
-  animation: wiggle 2.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .marquee,
-  .wiggle {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

@@ -12,6 +12,7 @@ export interface LocalStore {
   draft: Storefront;
   source: "ai" | "starter";
   publicPath: string | null; // "/s/<code>" once published
+  shortUrl?: string; // tinyurl version of the public link
   publishedDraft: Storefront | null;
   edits: Record<string, number>; // edit-depth diagnostic: which AI fields the creator changed
   createdAt: number;

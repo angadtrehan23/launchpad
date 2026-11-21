@@ -25,7 +25,7 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
           <p className="text-4xl">🛍️</p>
           <h1 className="mt-4 text-xl font-bold">This store link isn&apos;t working</h1>
           <p className="mt-2 text-sm text-neutral-600">It may have been cut off when it was copied. Ask the creator to share it again.</p>
-          <Link href="/" className="mt-6 inline-block rounded-xl bg-ink px-5 py-3 text-sm font-bold text-lime">
+          <Link href="/" className="mt-6 inline-block rounded-xl bg-violet px-5 py-3 text-sm font-semibold text-white">
             Build your own store
           </Link>
         </div>

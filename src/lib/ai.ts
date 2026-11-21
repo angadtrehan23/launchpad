@@ -63,7 +63,6 @@ const StoreOut = z.object({
   assumption: z.string(),
   creator: z.object({ displayName: z.string(), tagline: z.string(), bio: z.string(), niche: z.string() }),
   products: z.array(ProductOut),
-  plan: z.array(PlanOut),
 });
 const DirectionsOut = z.object({
   status: z.enum(["ok", "needs_more_info"]),
@@ -174,7 +173,6 @@ function lenient(value: unknown): unknown {
   if (!value || typeof value !== "object") return value;
   const o = { ...(value as Record<string, unknown>) };
   if (Array.isArray(o.products)) o.products = o.products.filter((x) => x && typeof x === "object");
-  if ("products" in o && !Array.isArray(o.plan)) o.plan = [];
   if (Array.isArray(o.plan)) o.plan = o.plan.filter((x) => x && typeof x === "object");
   if ("creator" in o || "directions" in o) {
     if (typeof o.followUpQuestion !== "string") o.followUpQuestion = "";
@@ -378,10 +376,9 @@ function reviewStore(raw: z.infer<typeof StoreOut>, input: CreatorInput) {
   if (products.length >= 3 && new Set(products.map((p) => p.format)).size === 1) issues.push("All products use the same format; vary them.");
   const seen = new Set<string>();
   products = products.filter((p) => !seen.has(p.title.toLowerCase()) && seen.add(p.title.toLowerCase()));
-  const plan = reviewPlan(raw.plan);
-  if (plan.length < 3) plan.splice(0, plan.length, ...starterStore(input).plan); // rules-based plan instead of another AI call
+  const plan: PlanStep[] = [];
   const creator = {
-    displayName: clip(raw.creator.displayName, 40) || input.handle || "Creator",
+    displayName: input.name || clip(raw.creator.displayName, 40) || "Creator", // always the name the creator gave us
     handle: input.handle,
     tagline: clip(raw.creator.tagline, 90),
     bio: clip(raw.creator.bio, 320),
@@ -410,7 +407,7 @@ export function starterStore(input: CreatorInput): Storefront {
   };
   return {
     creator: {
-      displayName: input.handle || "Your name",
+      displayName: input.name || "Your name",
       handle: input.handle,
       tagline: `Practical ${topic}, made simple`,
       bio: `I share practical ${topic} tips. This is where you can learn directly from me — join the waitlist for what's coming next.`,
@@ -542,7 +539,7 @@ export async function generateStore(
     assumption: "",
     ms: r.ms,
     store: { ...starterStore(input), theme: opts.theme || "candy" },
-    notice: "Our AI is busy right now, so we drafted a starter store from what you told us. Tap “Regenerate all” to try the AI again.",
+    notice: "We drafted a starter version from your answers. Tap “Regenerate all” for a more tailored one.",
   };
 }
 
@@ -550,7 +547,7 @@ export async function regenerateProfile(input: CreatorInput, store: Storefront, 
   const r = await withDeadline("profile", async (timeout) => {
     const out = await callModel(ProfileOut, STORE_SYSTEM, profilePrompt(input, store, hint), timeout);
     const value = {
-      displayName: clip(out.displayName, 40) || store.creator.displayName,
+      displayName: store.creator.displayName, // never renamed by AI
       tagline: clip(out.tagline, 90) || store.creator.tagline,
       bio: clip(out.bio, 320) || store.creator.bio,
     };

@@ -162,7 +162,8 @@ export interface Creator {
   tagline: string;
   bio: string;
   niche: string;
-  whatsapp?: string; // creator's 10-digit Indian mobile; waitlist requests arrive here
+  whatsapp?: string; // creator's 10-digit Indian mobile; customer requests arrive here
+  avatar?: string; // small data:image (uploaded, resized in the browser) or a YouTube avatar URL
 }
 
 export interface Storefront {
@@ -175,6 +176,10 @@ export interface Storefront {
 
 /** Everything the creator told us. Kept with the store so regeneration stays grounded. */
 export interface CreatorInput {
+  name: string; // the creator's own name, asked in the first step
+  whatsapp: string; // 10-digit Indian mobile
+  avatar: string;
+  profileNote: string; // real profile signals: YouTube channel description, or the creator's pasted bio/captions
   platforms: PlatformPresence[];
   expertOnly: boolean; // not on social yet
   earnings: Earning[];

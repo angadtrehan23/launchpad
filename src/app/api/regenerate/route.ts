@@ -5,12 +5,12 @@ import type { Storefront } from "@/lib/types";
 
 export const maxDuration = 60;
 
-const FAIL = "The AI couldn't respond just now. Your store is unchanged — try again in a moment.";
+const FAIL = "Couldn't update that just now. Your store is unchanged — try again in a moment.";
 
 /** If the free tier is cooling down, say for how long so the editor can retry by itself. */
 function failed() {
   const retryAfter = aiCooldownSecs();
-  return json({ error: retryAfter ? `AI is catching its breath. Trying again in ${retryAfter}s…` : FAIL, retryAfter }, 503);
+  return json({ error: retryAfter ? `Still generating… trying again in ${retryAfter}s` : FAIL, retryAfter }, 503);
 }
 
 /**
