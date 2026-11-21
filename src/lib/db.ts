@@ -213,6 +213,15 @@ export async function getAdminHash(): Promise<string | null> {
 export async function claimAdmin(hash: string): Promise<boolean> {
   return setNew("admin:pass", hash);
 }
+/** Owner reset (proved by the log-only setup code): new password, and every old admin session stops working. */
+export async function resetAdmin(hash: string): Promise<void> {
+  await set("admin:pass", hash);
+  await incr("admin:gen");
+}
+/** Admin sessions are tied to this number; bumping it signs every admin out. */
+export async function adminGeneration(): Promise<string> {
+  return (await get("admin:gen")) || "0";
+}
 
 // ---- stores ----
 export async function getSaved(id: string): Promise<SavedStore | null> {

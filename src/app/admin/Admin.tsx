@@ -12,7 +12,7 @@ const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-IN"
 const input = "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-base outline-none focus:border-violet";
 
 export default function Admin() {
-  const [state, setState] = useState<"loading" | "setup" | "login" | "ready">("loading");
+  const [state, setState] = useState<"loading" | "setup" | "login" | "reset" | "ready">("loading");
   const [rows, setRows] = useState<CreatorRow[]>([]);
   const [funnel, setFunnel] = useState<Funnel>({});
   const [password, setPassword] = useState("");
@@ -44,7 +44,7 @@ export default function Admin() {
   async function auth(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const r = await fetch(state === "setup" ? "/api/admin/setup" : "/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, code }) });
+    const r = await fetch(state === "login" ? "/api/admin/login" : "/api/admin/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, code, reset: state === "reset" }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) return setError(d.error || "Couldn't log in.");
     setPassword("");
@@ -89,11 +89,13 @@ export default function Admin() {
 
         {state === "loading" && <div className="mt-6 h-24 animate-pulse rounded-xl bg-neutral-200/60" />}
 
-        {(state === "setup" || state === "login") && (
+        {(state === "setup" || state === "login" || state === "reset") && (
           <form onSubmit={auth} className="mt-6 max-w-sm rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold text-ink">{state === "setup" ? "Set the admin password" : "Admin login"}</p>
-            <p className="mt-1 text-xs text-neutral-500">{state === "setup" ? "First visit: choose a password (10+ characters). Only you will use it." : "Enter the admin password."}</p>
-            {state === "setup" && (
+            <p className="text-sm font-semibold text-ink">{state === "setup" ? "Set the admin password" : state === "reset" ? "Reset the admin password" : "Admin login"}</p>
+            <p className="mt-1 text-xs text-neutral-500">
+              {state === "setup" ? "First visit: choose a password (10+ characters). Only you will use it." : state === "reset" ? "For the project owner. Everyone signed in as admin is signed out." : "Enter the admin password."}
+            </p>
+            {(state === "setup" || state === "reset") && (
               <>
                 <p className="mt-3 text-xs text-neutral-600">
                   Setup code: open Vercel → launchpad → <b>Logs</b> and search <b>admin setup code</b>. It&apos;s valid for an hour, so only the project owner can claim this page.
@@ -101,9 +103,22 @@ export default function Admin() {
                 <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="8-digit setup code" className={`${input} mt-2`} />
               </>
             )}
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={state === "setup" ? "New admin password" : "Admin password"} autoComplete={state === "setup" ? "new-password" : "current-password"} className={`${input} mt-3`} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={state === "login" ? "Admin password" : "New admin password"} autoComplete={state === "login" ? "current-password" : "new-password"} className={`${input} mt-3`} />
             {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-            <button className="mt-3 w-full rounded-xl bg-violet py-3 text-sm font-semibold text-white">{state === "setup" ? "Save and open" : "Log in"}</button>
+            <button className="mt-3 w-full rounded-xl bg-violet py-3 text-sm font-semibold text-white">{state === "login" ? "Log in" : "Save and open"}</button>
+            {state === "login" && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch("/api/admin/setup?reset=1", { cache: "no-store" });
+                  setError("");
+                  setState("reset");
+                }}
+                className="mt-3 w-full text-xs font-semibold text-neutral-500 underline"
+              >
+                Forgot it? Reset with a setup code (project owner)
+              </button>
+            )}
           </form>
         )}
 

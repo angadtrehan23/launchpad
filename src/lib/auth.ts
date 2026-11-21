@@ -1,7 +1,7 @@
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { promisify } from "util";
-import { createSession, endSession, getCreator, readSession, SESSION_MAX_AGE } from "./db";
+import { adminGeneration, createSession, endSession, getCreator, readSession, SESSION_MAX_AGE } from "./db";
 import type { CreatorAccount } from "./types";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
@@ -35,7 +35,7 @@ export async function startCreatorSession(creatorId: string) {
   await setCookie(CREATOR_COOKIE, await createSession("sess", creatorId));
 }
 export async function startAdminSession() {
-  await setCookie(ADMIN_COOKIE, await createSession("asess", "admin"));
+  await setCookie(ADMIN_COOKIE, await createSession("asess", `admin:${await adminGeneration()}`));
 }
 
 export async function logout(kind: "creator" | "admin") {
@@ -56,7 +56,8 @@ export async function currentCreator(): Promise<CreatorAccount | null> {
 
 export async function isAdmin(): Promise<boolean> {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
-  return !!token && (await readSession("asess", token)) === "admin";
+  if (!token) return false;
+  return (await readSession("asess", token)) === `admin:${await adminGeneration()}`;
 }
 
 /** What the browser is allowed to see about an account. */
