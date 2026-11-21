@@ -71,6 +71,7 @@ export default function Dashboard() {
         <InstagramCard account={account} onChange={setAccount} />
 
         <p className="mt-8 text-center text-xs text-neutral-500">Logged in as +91 {account.phone}</p>
+        <DeleteAccount />
       </div>
     </main>
   );
@@ -128,5 +129,35 @@ function InstagramCard({ account, onChange }: { account: NonNullable<ReturnType<
         </>
       )}
     </section>
+  );
+}
+
+function DeleteAccount() {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  async function remove() {
+    const r = await fetch("/api/auth/me", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return setError(d.error || "Couldn't delete the account.");
+    window.location.assign("/");
+  }
+  if (!open)
+    return (
+      <button onClick={() => setOpen(true)} className="mx-auto mt-2 block text-xs text-neutral-400 underline">
+        Delete my account
+      </button>
+    );
+  return (
+    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+      <p className="font-semibold">Delete your account?</p>
+      <p className="mt-1 text-xs">Your stores, live pages and customer requests will be deleted for good. Enter your password to confirm.</p>
+      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-3 w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-base outline-none" />
+      {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+      <div className="mt-3 flex gap-2">
+        <button onClick={() => setOpen(false)} className="flex-1 rounded-lg border border-red-200 bg-white py-2 font-semibold">Cancel</button>
+        <button onClick={remove} disabled={!password} className="flex-1 rounded-lg bg-red-600 py-2 font-semibold text-white disabled:opacity-50">Delete for good</button>
+      </div>
+    </div>
   );
 }
