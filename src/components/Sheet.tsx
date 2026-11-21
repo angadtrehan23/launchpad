@@ -2,8 +2,11 @@
 
 import { useEffect, type ReactNode } from "react";
 
-/** Mobile bottom sheet; centred dialog on wider screens. */
-export default function Sheet({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode }) {
+/**
+ * Mobile bottom sheet; centred dialog on wider screens.
+ * Header and footer stay put; only the middle scrolls. "Done" is pinned at the bottom so it never moves.
+ */
+export default function Sheet({ open, onClose, title, children, footer, done = true }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; done?: boolean }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -20,15 +23,24 @@ export default function Sheet({ open, onClose, title, children, footer }: { open
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative flex max-h-[88dvh] w-full max-w-md flex-col rounded-t-3xl border border-neutral-200 bg-white text-ink shadow-2xl sm:rounded-3xl">
-        <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
+      <div className="relative flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-neutral-200 bg-white text-ink shadow-2xl sm:rounded-3xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-neutral-100 px-5 py-3.5">
           <h3 className="font-display text-lg font-bold">{title}</h3>
-          <button onClick={onClose} className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-sm font-medium" aria-label="Close">
-            Done
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-600" aria-label="Close">
+            ✕
           </button>
         </div>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="border-t border-neutral-100 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</div>}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">{children}</div>
+        {(footer || done) && (
+          <div className="shrink-0 space-y-3 border-t border-neutral-100 bg-white px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {footer}
+            {done && (
+              <button onClick={onClose} className="w-full rounded-xl bg-ink py-3 text-sm font-semibold text-white">
+                Done
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

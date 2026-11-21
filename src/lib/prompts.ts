@@ -53,7 +53,7 @@ products: usually 3 (2 if the input is narrow, never more than 4). Build a value
 - priceRationale: one sentence, max 150 characters, to the creator: why this price works for their audience size, the format's effort, and the buyer. Don't cite competitor prices or statistics.
 - description: 2–3 sentences, max 320 characters, to the buyer: who it's for, what they get, the result.
 - highlights: exactly 3 concrete bullets, max 50 characters each.
-- ctaLabel: max 22 characters. Products aren't built yet, so the button collects interest: for one_on_one and workshop use "Request a slot"-style labels; otherwise "Join the waitlist"-style labels (e.g. "Get early access").
+- ctaLabel: exactly one of "Join the waitlist", "Get early access", "Notify me", "Request a slot", "Book a free call", "Ask a question". Products aren't built yet: one_on_one and workshop use "Request a slot" or "Book a free call"; everything else uses a waitlist-style button.
 
 # Language
 - english: simple, warm Indian English. Short sentences.

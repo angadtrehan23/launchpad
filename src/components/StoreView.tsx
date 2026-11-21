@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { formatInr } from "@/lib/pricing";
 import { themeStyle } from "@/lib/themes";
-import { BOOKABLE, FORMAT_LABEL, type Storefront } from "@/lib/types";
+import { BOOKABLE, ctaOf, FORMAT_LABEL, type Storefront } from "@/lib/types";
 
 type Props = {
   store: Storefront;
   mode: "public" | "edit";
+  verified?: string | null; // Instagram handle confirmed by the team
   busy?: string | null; // which target is regenerating: "profile" | "product:N" | "all"
   clicks?: number[];
   joins?: number[];
@@ -49,7 +50,7 @@ function Shimmer() {
   );
 }
 
-export default function StoreView({ store, mode, busy, clicks, joins, onEditProfile, onEditProduct, onRegen, onCta }: Props) {
+export default function StoreView({ store, mode, verified, busy, clicks, joins, onEditProfile, onEditProduct, onRegen, onCta }: Props) {
   const edit = mode === "edit";
   const [openWhy, setOpenWhy] = useState<number | null>(null);
   const { creator, products } = store;
@@ -78,14 +79,13 @@ export default function StoreView({ store, mode, busy, clicks, joins, onEditProf
             <h1 onClick={edit ? onEditProfile : undefined} className={`mt-3 font-display text-[28px] font-bold leading-tight ${edit ? "cursor-text" : ""}`}>
               {creator.displayName || "Your name"}
             </h1>
-            {creator.handle &&
-              (edit ? (
-                <p className="mt-0.5 text-sm text-[var(--sf-muted)]">@{creator.handle}</p>
-              ) : (
-                <a href={`https://instagram.com/${creator.handle}`} target="_blank" rel="noopener noreferrer nofollow" className="mt-0.5 inline-block text-sm text-[var(--sf-muted)] underline-offset-2 hover:underline">
-                  @{creator.handle} ↗
-                </a>
-              ))}
+            {verified ? (
+              <a href={`https://instagram.com/${verified}`} target="_blank" rel="noopener noreferrer nofollow" className="mt-1 inline-flex items-center gap-1 text-sm text-[var(--sf-muted)] underline-offset-2 hover:underline">
+                @{verified} <span className="rounded-full bg-sky-500 px-1.5 text-[10px] font-bold text-white">✓ Verified</span>
+              </a>
+            ) : (
+              creator.handle && <p className="mt-0.5 text-sm text-[var(--sf-muted)]">@{creator.handle}</p>
+            )}
             {creator.tagline && (
               <p onClick={edit ? onEditProfile : undefined} className={`mt-3 text-base font-semibold leading-snug ${edit ? "cursor-text" : ""}`}>
                 {creator.tagline}
@@ -138,7 +138,7 @@ export default function StoreView({ store, mode, busy, clicks, joins, onEditProf
                     )}
                   </div>
                   <button type="button" onClick={() => onCta?.(i)} className="press rounded-2xl bg-[var(--sf-accent)] px-5 py-3 text-sm font-bold text-[var(--sf-accent-ink)]" style={{ border: "var(--sf-border) solid var(--sf-line)", boxShadow: "var(--sf-shadow)" }}>
-                    {p.ctaLabel || (bookable ? "Request a slot" : "Join the waitlist")}
+                    {ctaOf(p).label}
                   </button>
                 </div>
                 {edit && openWhy === i && (
@@ -157,7 +157,7 @@ export default function StoreView({ store, mode, busy, clicks, joins, onEditProf
         </section>
 
         <footer className="mt-10 px-6 text-center text-[11px] leading-relaxed text-[var(--sf-muted)]">
-          {mode === "public" && <p>Unverified creator page. Payments open once the creator turns on checkout.</p>}
+          {mode === "public" && <p>{verified ? `Instagram @${verified} verified by Launchpad.` : "Instagram not verified yet."} Payments open once the creator turns on checkout.</p>}
           <p className="mt-1">
             Built in 2 minutes with <b>Launchpad</b> · a concept for SuperProfile
           </p>

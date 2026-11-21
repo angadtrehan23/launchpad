@@ -23,6 +23,25 @@ export const FORMAT_LABEL: Record<ProductFormat, string> = {
 /** Products a creator can deliver without making anything first → "Request a slot". */
 export const BOOKABLE: ProductFormat[] = ["one_on_one", "workshop"];
 
+// ---------- Product buttons: a fixed set, each with a clear action ----------
+export type CtaAction = "waitlist" | "slot" | "call" | "question";
+export const CTA_OPTIONS: { label: string; action: CtaAction; what: string }[] = [
+  { label: "Join the waitlist", action: "waitlist", what: "Collects name and number so you can tell them when it launches." },
+  { label: "Get early access", action: "waitlist", what: "Same as the waitlist, worded for a first-batch offer." },
+  { label: "Notify me", action: "waitlist", what: "A lighter waitlist: they just want to hear when it's out." },
+  { label: "Request a slot", action: "slot", what: "For sessions and workshops: they ask for a time, you confirm it." },
+  { label: "Book a free call", action: "call", what: "They ask for a short call with you before buying." },
+  { label: "Ask a question", action: "question", what: "They send you a question about this product." },
+];
+export const CTA_LABELS = CTA_OPTIONS.map((c) => c.label);
+export function defaultCta(format: ProductFormat): string {
+  return BOOKABLE.includes(format) ? "Request a slot" : "Join the waitlist";
+}
+/** The button's action. Unknown labels (old drafts, AI drift) fall back to the format's default. */
+export function ctaOf(p: { ctaLabel: string; format: ProductFormat }) {
+  return CTA_OPTIONS.find((c) => c.label === p.ctaLabel) || CTA_OPTIONS.find((c) => c.label === defaultCta(p.format))!;
+}
+
 // ---------- Where the creator creates ----------
 export const PLATFORMS = [
   "instagram",
@@ -192,40 +211,51 @@ export interface CreatorInput {
   direction: Direction | null;
 }
 
-export interface WaitlistEntry {
-  index: number;
-  name: string;
-  phone: string;
-  at: string;
-}
-
-export interface FunnelMetrics {
-  sessionStartedAt: string | null; // when the creator opened the wizard (client clock)
-  generatedAt: string;
-  generationMs: number;
-  directionsShown: number;
-  edits: Record<string, number>; // field → count, the "edit depth" diagnostic
-  regens: Record<string, number>;
-}
-
-export interface StoreRecord {
+/** A creator's login. Password is stored only as a salted scrypt hash. */
+export interface CreatorAccount {
   id: string;
-  slug: string;
-  editToken: string;
+  name: string;
+  phone: string; // 10-digit Indian mobile, also the login id
+  passHash: string;
+  createdAt: string;
+  lastLoginAt: string;
+  instagram: InstagramCheck | null;
+  storeIds: string[];
+}
+
+/** Ownership check for an Instagram handle: the creator puts a code in their bio, the team confirms it. */
+export interface InstagramCheck {
+  handle: string;
+  code: string;
+  status: "pending" | "verified" | "rejected";
+  requestedAt: string;
+  reviewedAt?: string;
+}
+
+/** A store saved to the creator's account. */
+export interface SavedStore {
+  id: string;
+  ownerId: string;
   input: CreatorInput;
   draft: Storefront;
-  published: Storefront | null;
   source: "ai" | "starter";
+  notes?: { assumption?: string; notice?: string };
+  slug: string | null; // public page at /s/<slug> once published
+  published: Storefront | null; // what the public page shows
+  publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  publishedAt: string | null;
-  metrics: FunnelMetrics;
 }
 
-export interface StoreStats {
-  views: number;
-  clicks: number[];
-  waitlist: number[];
+/** Someone who tapped a product button on a public page and left their details. */
+export interface CustomerRequest {
+  index: number;
+  product: string;
+  action: CtaAction;
+  name: string;
+  phone: string;
+  message?: string;
+  at: string;
 }
 
 export type RegenTarget = "profile" | `product:${number}` | "all" | "plan";

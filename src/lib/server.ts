@@ -1,24 +1,9 @@
-import { getStore, slugTaken, underLimit } from "./db";
+import { claimSlug, underLimit } from "./db";
 import { cleanAvatar } from "./input";
-import { FORMATS, LANGUAGES, SP_FEATURES, THEMES, type PlanStep, type Product, type StoreRecord, type Storefront } from "./types";
+import { CTA_LABELS, defaultCta, FORMATS, LANGUAGES, SP_FEATURES, THEMES, type PlanStep, type Product, type Storefront } from "./types";
 
 export function json(data: unknown, status = 200) {
   return Response.json(data, { status });
-}
-
-export async function loadAuthed(req: Request, id: string): Promise<StoreRecord | Response> {
-  const rec = await getStore(id);
-  if (!rec) return json({ error: "This store doesn't exist anymore." }, 404);
-  const token = req.headers.get("x-edit-token");
-  if (!token || token !== rec.editToken) return json({ error: "You don't have edit access to this store." }, 403);
-  return rec;
-}
-
-/** Public shape of a record — never leak the edit token. */
-export function publicRecord(rec: StoreRecord) {
-  const rest: Omit<StoreRecord, "editToken"> & { editToken?: string } = { ...rec };
-  delete rest.editToken;
-  return rest;
 }
 
 export function clientIp(req: Request): string {
@@ -47,20 +32,22 @@ export async function aiRateLimit(req: Request, kind: "generate" | "regen"): Pro
   return null;
 }
 
-export async function makeSlug(base: string): Promise<string> {
+/** Short, readable public address from the creator's name: meera-iyer, then meera-iyer-2… */
+export async function makeSlug(base: string, id: string): Promise<string> {
   const root =
     base
       .toLowerCase()
       .normalize("NFKD")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 24) || "store";
-  // Always suffixed: without ownership verification, nobody gets to claim the bare /s/<handle>.
-  for (let i = 0; i < 5; i++) {
-    const s = `${root}-${Math.random().toString(36).slice(2, 6)}`;
-    if (!(await slugTaken(s))) return s;
+      .slice(0, 30) || "store";
+  for (let i = 1; i <= 9; i++) {
+    const s = i === 1 ? root : `${root}-${i}`;
+    if (await claimSlug(s, id)) return s;
   }
-  return `${root}-${crypto.randomUUID().slice(0, 8)}`;
+  const s = `${root}-${crypto.randomUUID().slice(0, 6)}`;
+  await claimSlug(s, id);
+  return s;
 }
 
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : "");
@@ -78,7 +65,7 @@ export function sanitizeDraft(raw: unknown, fallback: Storefront): Storefront {
         priceRationale: str(p.priceRationale, 300),
         description: str(p.description, 600),
         highlights: Array.isArray(p.highlights) ? p.highlights.slice(0, 5).map((h) => str(h, 80)) : [],
-        ctaLabel: str(p.ctaLabel, 30),
+        ctaLabel: CTA_LABELS.includes(String(p.ctaLabel)) ? String(p.ctaLabel) : defaultCta(FORMATS.includes(p.format as never) ? (p.format as Product["format"]) : "ebook"),
       }))
     : fallback.products;
   const plan: PlanStep[] = Array.isArray(r.plan)

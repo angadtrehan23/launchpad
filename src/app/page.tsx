@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Thinking from "@/components/Thinking";
 import { askFromBrowser } from "@/lib/browserAi";
 import { toAvatar } from "@/lib/image";
-import { listSaved, saveLocalStore, setFlash, type SavedStore } from "@/lib/local";
+import TopNav from "@/components/TopNav";
+import { useAccount } from "@/lib/useAccount";
 import {
   EARNING_LABEL,
   EARNINGS,
@@ -57,10 +57,8 @@ interface Saved {
 const DIRECTION_MESSAGES = ["Reading your topics and channels…", "Looking at what your audience size can support…", "Matching your skills to what Indian buyers pay for…", "Shaping three directions for you…"];
 const BUILD_MESSAGES = ["Writing your bio…", "Picking products your followers would buy…", "Pricing them in ₹ for your audience…", "Writing descriptions…", "Laying out your page…"];
 
-const phoneOk = (v: string) => /^[6-9]\d{9}$/.test(v.replace(/\D/g, "").slice(-10));
 
 export default function Home() {
-  const router = useRouter();
   const [step, setStep] = useState<Step>("intro");
   const [w, setW] = useState<Wizard>(EMPTY);
   const [ask, setAsk] = useState<{ message: string; canForce: boolean } | null>(null);
@@ -74,7 +72,7 @@ export default function Home() {
   const [showOwn, setShowOwn] = useState(false);
   const [customKw, setCustomKw] = useState("");
   const [buildNote, setBuildNote] = useState("");
-  const [saved, setSaved] = useState<SavedStore[]>([]);
+  const [account] = useAccount();
   const [ytChecking, setYtChecking] = useState(false);
   const [photoNote, setPhotoNote] = useState("");
   const [restored, setRestored] = useState(false);
@@ -98,7 +96,6 @@ export default function Home() {
         setStep(s.step === "building" ? "directions" : s.step || "intro");
       }
     } catch {}
-    setSaved(listSaved());
     setRestored(true);
   }, []);
   useEffect(() => {
@@ -117,6 +114,11 @@ export default function Home() {
   };
   const update = (patch: Partial<Wizard>) => setW((x) => ({ ...x, ...patch }));
   const start = () => {
+    if (!account) {
+      window.location.assign(`/login?next=${encodeURIComponent("/?go=1")}`);
+      return;
+    }
+    if (!w.name.trim()) update({ name: account.name });
     if (!w.sessionStartedAt) {
       update({ sessionStartedAt: new Date().toISOString() });
       try {
@@ -125,6 +127,22 @@ export default function Home() {
     }
     go("about");
   };
+
+  // Building a store needs an account: logged-out visitors always start from the intro.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (restored && account === null && step !== "intro") setStep("intro");
+  }, [restored, account, step]);
+
+  // Back from login (or "Build a new store" in My stores): jump straight into step 1.
+  useEffect(() => {
+    if (!restored || !account) return;
+    if (new URLSearchParams(window.location.search).get("go") !== "1") return;
+    window.history.replaceState(null, "", "/");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (step === "intro") start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restored, account]);
 
   // ---- helpers ----
   const hasPlatform = (p: Platform) => w.platforms.some((x) => x.platform === p);
@@ -187,7 +205,7 @@ export default function Home() {
     return !!h && !/instagram\.com/i.test(h) && !/^(?!.*\.\.)(?!\.)(?!.*\.$)[a-zA-Z0-9._]{1,30}$/.test(h);
   })();
   const canNext: Record<string, boolean> = {
-    about: w.name.trim().length >= 2 && phoneOk(w.whatsapp),
+    about: w.name.trim().length >= 2,
     platforms: (w.platforms.length > 0 || w.expertOnly) && !igBad,
     earnings: w.earnings.length > 0,
     topics: w.keywords.length > 0 || w.description.trim().split(/\s+/).filter(Boolean).length >= 4,
@@ -250,17 +268,27 @@ export default function Home() {
       });
       const data = await res.json().catch(() => ({ status: "error" }));
       if (data.status === "ok") {
-        // No database: the draft is kept in this browser and opened in the editor.
-        const id = crypto.randomUUID().slice(0, 12);
-        const now = Date.now();
-        const draft = { ...data.draft, creator: { ...data.draft.creator, whatsapp: data.input.whatsapp, avatar: data.input.avatar } };
-        saveLocalStore({ id, input: data.input, draft, source: data.source, publicPath: null, publishedDraft: null, edits: {}, createdAt: now, updatedAt: now });
-        setFlash(id, { assumption: data.assumption, notice: data.notice });
-        try {
-          localStorage.removeItem(SAVE_KEY);
-        } catch {}
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign(`/studio/${id}`);
+        // Save to the creator's account, then open the editor.
+        const draft = { ...data.draft, creator: { ...data.draft.creator, avatar: data.input.avatar } };
+        const saved = await fetch("/api/stores", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input: data.input, draft, source: data.source, notes: { assumption: data.assumption, notice: data.notice } }),
+        });
+        const got = await saved.json().catch(() => ({}));
+        if (saved.status === 401) {
+          window.location.assign(`/login?mode=login&next=${encodeURIComponent("/?go=1")}`);
+          return;
+        }
+        if (saved.ok && got.id) {
+          try {
+            localStorage.removeItem(SAVE_KEY);
+          } catch {}
+          window.location.assign(`/studio/${got.id}`);
+          return;
+        }
+        setStep("directions");
+        setError(got.error || "Your store was built but we couldn't save it. Tap Build again.");
         return;
       }
       setStep("directions");
@@ -297,19 +325,21 @@ export default function Home() {
 
   return (
     <main className="min-h-dvh bg-[#F7F7FB]">
-      <div ref={topRef} className="mx-auto w-full max-w-lg px-4 pb-32 pt-5">
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-ink">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet text-sm text-white">L</span>
-            Launchpad
-            <span className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">concept for SuperProfile</span>
-          </div>
-          {step !== "intro" && (
-            <button onClick={() => go(stepIndex <= 0 ? "intro" : FLOW[stepIndex - 1])} className="text-sm font-medium text-neutral-500 hover:text-ink">
-              ← Back
-            </button>
-          )}
-        </header>
+      <TopNav
+        right={
+          account ? (
+            <a href="/dashboard" className="px-2 py-1.5 font-medium text-neutral-600 hover:text-ink">My stores</a>
+          ) : account === null ? (
+            <a href="/login?mode=login" className="px-2 py-1.5 font-medium text-neutral-600 hover:text-ink">Log in</a>
+          ) : null
+        }
+      />
+      <div ref={topRef} className="mx-auto w-full max-w-lg px-4 pb-32 pt-2">
+        {step !== "intro" && (
+          <button onClick={() => go(stepIndex <= 0 ? "intro" : FLOW[stepIndex - 1])} className="mt-2 text-sm font-medium text-neutral-500 hover:text-ink">
+            ← Back
+          </button>
+        )}
 
         {step !== "intro" && (
           <div className="mt-6">
@@ -343,7 +373,7 @@ export default function Home() {
 
         {/* INTRO */}
         {step === "intro" && (
-          <section className="mt-10">
+          <section className="mt-8">
             <p className="text-sm font-semibold text-violet">For creators, coaches and educators</p>
             <h1 className="mt-2 text-[32px] font-bold leading-tight tracking-tight text-ink">Turn your audience into your first store, in minutes.</h1>
             <p className="mt-3 text-[15px] leading-relaxed text-neutral-600">
@@ -367,17 +397,18 @@ export default function Home() {
             <button onClick={start} className="mt-8 w-full rounded-xl bg-violet py-3.5 text-base font-semibold text-white shadow-sm hover:bg-violet/90">
               {w.sessionStartedAt ? "Continue where I left off →" : "Get started →"}
             </button>
-            <p className="mt-2 text-center text-xs text-neutral-500">About 3 minutes · No login · Free</p>
-
-            {saved.length > 0 && (
-              <div className="mt-8 rounded-xl border border-neutral-200 bg-white p-3">
-                <p className="px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Your stores on this device</p>
-                {saved.slice(0, 3).map((s) => (
-                  <button key={s.id} onClick={() => router.push(`/studio/${s.id}`)} className="mt-1 flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm font-medium hover:bg-neutral-50">
-                    {s.name} <span className="text-neutral-400">→</span>
-                  </button>
-                ))}
-              </div>
+            {account && (
+              <a href="/dashboard" className="mt-3 block w-full rounded-xl border border-neutral-200 bg-white py-3 text-center text-sm font-semibold text-ink hover:bg-neutral-50">
+                Open my stores
+              </a>
+            )}
+            {account === null && (
+              <p className="mt-3 text-center text-sm text-neutral-600">
+                Already have an account?{" "}
+                <a href="/login?mode=login" className="font-semibold text-violet">
+                  Log in
+                </a>
+              </p>
             )}
           </section>
         )}
@@ -408,16 +439,6 @@ export default function Home() {
             <label className="mt-5 block">
               <span className={label}>Full name</span>
               <input value={w.name} onChange={(e) => update({ name: e.target.value })} maxLength={40} autoComplete="name" placeholder="e.g. Priya Sharma" className={`${input} mt-1.5`} />
-            </label>
-            <label className="mt-4 block">
-              <span className={label}>WhatsApp number</span>
-              <div className="mt-1.5 flex items-center rounded-lg border border-neutral-300 bg-white px-3 focus-within:border-violet focus-within:ring-2 focus-within:ring-violet/20">
-                <span className="text-neutral-500">+91</span>
-                <input value={w.whatsapp} onChange={(e) => update({ whatsapp: e.target.value })} inputMode="numeric" maxLength={14} autoComplete="tel-national" placeholder="98765 43210" className="w-full bg-transparent px-2 py-2.5 text-base outline-none" />
-              </div>
-              <span className="mt-1 block text-xs text-neutral-500">
-                {w.whatsapp && !phoneOk(w.whatsapp) ? <span className="text-red-600">Enter a 10-digit Indian mobile number.</span> : "Customers who want your products will reach you here."}
-              </span>
             </label>
           </section>
         )}

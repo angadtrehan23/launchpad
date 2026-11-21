@@ -13,6 +13,9 @@ import {
 } from "./prompts";
 import {
   BOOKABLE,
+  CTA_LABELS,
+  ctaOf,
+  defaultCta,
   FORMATS,
   SP_FEATURES,
   type CreatorInput,
@@ -351,11 +354,9 @@ export function reviewProduct(p: z.infer<typeof ProductOut>, input: CreatorInput
     highlights,
     ctaLabel: clip(p.ctaLabel, 26),
   };
-  // The button must match what actually happens: calls/workshops request a slot, everything else joins a waitlist.
-  const bookable = BOOKABLE.includes(format);
-  if (!out.ctaLabel || (bookable && /wait ?list|early access/i.test(out.ctaLabel)) || (!bookable && /slot|book/i.test(out.ctaLabel))) {
-    out.ctaLabel = bookable ? "Request a slot" : "Join the waitlist";
-  }
+  // Buttons come from a fixed list, each tied to what happens when a customer taps it.
+  if (!CTA_LABELS.includes(out.ctaLabel)) out.ctaLabel = defaultCta(format);
+  if (BOOKABLE.includes(format) && ctaOf(out).action === "waitlist") out.ctaLabel = defaultCta(format);
   if (!out.title) issues.push(`${label} has no title.`);
   if (out.description.length < 40) issues.push(`${label} description is missing or too short.`);
   if (RISKY.test(`${out.title} ${out.description} ${highlights.join(" ")}`)) issues.push(`${label} makes a guaranteed-result, cure or income claim; remove it.`);
