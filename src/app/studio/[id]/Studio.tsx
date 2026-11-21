@@ -147,8 +147,9 @@ export default function Studio({ id }: { id: string }) {
   async function publish() {
     if (!draft || !rec) return;
     setPublishing(true);
+    // Save any edit still waiting for autosave first, so nothing typed just before Publish is lost.
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    pending.current = null;
+    await flush();
     try {
       const r = await fetch(`/api/stores/${id}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draft }) });
       const data = await r.json().catch(() => ({}));
