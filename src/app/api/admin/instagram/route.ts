@@ -1,5 +1,5 @@
 import { isAdmin } from "@/lib/auth";
-import { getCreator, saveCreator } from "@/lib/db";
+import { audit, getCreator, saveCreator } from "@/lib/db";
 import { json } from "@/lib/server";
 
 /** Team confirms (or rejects) that the creator's Instagram bio shows their code. */
@@ -11,5 +11,6 @@ export async function POST(req: Request) {
   if (!c?.instagram) return json({ error: "No Instagram check for this creator." }, 404);
   c.instagram = { ...c.instagram, status, reviewedAt: new Date().toISOString() };
   await saveCreator(c);
+  await audit(`instagram_${status}`, `@${c.instagram.handle} for ${c.name}`);
   return json({ ok: true });
 }

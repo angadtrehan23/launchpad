@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "@/components/TopNav";
 
@@ -16,6 +16,14 @@ export default function LoginForm() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [forgot, setForgot] = useState(false);
+
+  // Already logged in: go straight on.
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((r) => (r.ok ? window.location.replace(next) : null))
+      .catch(() => {});
+  }, [next]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,6 +85,16 @@ export default function LoginForm() {
               <button type="button" onClick={() => setShow(!show)} className="text-xs font-semibold text-neutral-500">{show ? "Hide" : "Show"}</button>
             </div>
             {mode === "signup" && <span className="mt-1 block text-xs text-neutral-500">At least 8 characters.</span>}
+            {mode === "login" && (
+              <button type="button" onClick={() => setForgot(!forgot)} className="mt-1.5 text-xs font-semibold text-violet">
+                Forgot password?
+              </button>
+            )}
+            {mode === "login" && forgot && (
+              <span className="mt-1 block rounded-lg bg-neutral-50 p-2.5 text-xs text-neutral-600">
+                Message the Launchpad team from the number on your account. We&apos;ll check it&apos;s you and send a temporary password, which you can use to log in.
+              </span>
+            )}
           </label>
           {error && <p className="mt-4 rounded-lg bg-red-50 p-2.5 text-sm text-red-700" role="alert">{error}</p>}
           <button disabled={busy} className="mt-5 w-full rounded-xl bg-violet py-3.5 text-base font-semibold text-white shadow-sm hover:bg-violet/90 disabled:opacity-60">

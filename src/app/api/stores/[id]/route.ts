@@ -1,4 +1,4 @@
-import { getRequests, getViews, putSaved } from "@/lib/db";
+import { deleteStore, getRequests, getViews, putSaved } from "@/lib/db";
 import { ownStore } from "@/lib/owner";
 import { json, sanitizeDraft } from "@/lib/server";
 
@@ -30,3 +30,11 @@ export async function PUT(req: Request, { params }: Ctx) {
 
 /** Same as PUT: the editor's last-chance save on page close uses sendBeacon, which can only POST. */
 export const POST = PUT;
+
+/** Delete this store: draft, live page and its customer requests. */
+export async function DELETE(_req: Request, { params }: Ctx) {
+  const r = await ownStore((await params).id);
+  if (r instanceof Response) return r;
+  await deleteStore(r.me, r.store.id);
+  return json({ ok: true });
+}

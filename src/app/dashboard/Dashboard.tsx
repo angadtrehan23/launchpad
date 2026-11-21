@@ -60,7 +60,18 @@ export default function Dashboard() {
                   <div className="mt-3 flex items-center gap-2 text-sm">
                     <Link href={`/studio/${s.id}`} className="rounded-lg bg-violet/10 px-3 py-1.5 font-semibold text-violet">Edit</Link>
                     {s.slug && <a href={`/s/${s.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-neutral-200 px-3 py-1.5 font-semibold text-neutral-700">Open page ↗</a>}
-                    <span className="ml-auto text-xs text-neutral-500">{s.requests} customer request{s.requests === 1 ? "" : "s"}</span>
+                    <span className="ml-auto text-xs text-neutral-500">{s.requests} request{s.requests === 1 ? "" : "s"}</span>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Delete “${s.title}”? Its draft${s.slug ? ", live page" : ""} and customer requests will be deleted for good.`)) return;
+                        const r = await fetch(`/api/stores/${s.id}`, { method: "DELETE" });
+                        if (r.ok) setStores((x) => (x || []).filter((y) => y.id !== s.id));
+                      }}
+                      className="text-xs font-semibold text-neutral-400 hover:text-red-600"
+                      aria-label={`Delete ${s.title}`}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </li>
               ))}

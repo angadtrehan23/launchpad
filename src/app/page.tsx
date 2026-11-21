@@ -25,7 +25,7 @@ type Step = "intro" | "about" | "platforms" | "earnings" | "topics" | "direction
 const FLOW: Step[] = ["about", "platforms", "earnings", "topics", "directions"];
 const STEP_TITLE: Record<string, string> = { about: "About you", platforms: "Your channels", earnings: "Your earnings", topics: "Your content", directions: "Your direction" };
 const MAX_KEYWORDS = 6;
-const SAVE_KEY = "lp:wizard:v3";
+const SAVE_BASE = "lp:wizard:v4";
 
 interface Wizard {
   name: string;
@@ -79,10 +79,14 @@ export default function Home() {
   const dirsKey = useRef("");
   const topRef = useRef<HTMLDivElement>(null);
 
-  // ---- restore after refresh (browser-only data, so after mount) ----
+  // ---- restore after refresh: answers are kept per account, so a shared phone never shows someone else's ----
+  const SAVE_KEY = `${SAVE_BASE}:${account?.id || "guest"}`;
   useEffect(() => {
+    if (account === undefined || restored) return;
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      localStorage.removeItem("lp:wizard:v3"); // older, device-wide answers
+      if (!account) localStorage.removeItem(SAVE_KEY);
+      const raw = account ? localStorage.getItem(SAVE_KEY) : null;
       if (raw) {
         const s = JSON.parse(raw) as Saved;
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -97,14 +101,15 @@ export default function Home() {
       }
     } catch {}
     setRestored(true);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account]);
   useEffect(() => {
     if (!restored) return;
     try {
       const s: Saved = { w, step, directions, dirSource, picked, shownCount, dirsKey: dirsKey.current };
       localStorage.setItem(SAVE_KEY, JSON.stringify(s));
     } catch {}
-  }, [restored, w, step, directions, dirSource, picked, shownCount]);
+  }, [restored, w, step, directions, dirSource, picked, shownCount, SAVE_KEY]);
 
   const go = (s: Step) => {
     setStep(s);

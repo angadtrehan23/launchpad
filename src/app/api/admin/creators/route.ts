@@ -1,5 +1,5 @@
 import { isAdmin } from "@/lib/auth";
-import { countRequests, getFunnel, getSavedMany, listCreators } from "@/lib/db";
+import { countRequests, getAudit, getFunnel, getSavedMany, listCreators } from "@/lib/db";
 import { json } from "@/lib/server";
 
 /** Every creator who signed up, with their setup details and stores. Admin only. */
@@ -30,5 +30,5 @@ export async function GET() {
       })),
     });
   }
-  return json({ creators: out, funnel: await getFunnel() });
+  return json({ creators: out, funnel: await getFunnel(), audit: await getAudit() });
 }

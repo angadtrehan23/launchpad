@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const password = String(body.password || "");
   if (name.length < 2) return json({ error: "Please enter your full name." }, 400);
   if (!phoneValid(phone)) return json({ error: "Enter a 10-digit Indian mobile number." }, 400);
-  if (password.length < PASSWORD_MIN) return json({ error: `Use at least ${PASSWORD_MIN} characters for your password.` }, 400);
+  if (password.length < PASSWORD_MIN || password.length > 200) return json({ error: `Use ${PASSWORD_MIN} to 200 characters for your password.` }, 400);
   if (!(await underLimit(`signup:${clientIp(req)}`, 10, 3600))) return json({ error: "Too many sign-ups from this network. Try again in an hour." }, 429);
 
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 16);

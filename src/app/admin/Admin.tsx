@@ -16,6 +16,9 @@ export default function Admin() {
   const [rows, setRows] = useState<CreatorRow[]>([]);
   const [funnel, setFunnel] = useState<Funnel>({});
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [auditLog, setAuditLog] = useState<{ at: string; action: string; detail: string }[]>([]);
+  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
 
@@ -29,6 +32,7 @@ export default function Admin() {
     const d = await r.json();
     setRows(d.creators || []);
     setFunnel(d.funnel || {});
+    setAuditLog(d.audit || []);
     setState("ready");
   }, []);
 
@@ -40,7 +44,7 @@ export default function Admin() {
   async function auth(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const r = await fetch(state === "setup" ? "/api/admin/setup" : "/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+    const r = await fetch(state === "setup" ? "/api/admin/setup" : "/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, code }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) return setError(d.error || "Couldn't log in.");
     setPassword("");
@@ -49,6 +53,19 @@ export default function Admin() {
 
   async function review(creatorId: string, status: "verified" | "rejected") {
     await fetch("/api/admin/instagram", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ creatorId, status }) });
+    load();
+  }
+
+  async function act(c: CreatorRow, action: "reset" | "delete") {
+    const sure =
+      action === "reset"
+        ? confirm(`Reset the password for ${c.name}? Their old password will stop working.`)
+        : confirm(`Remove ${c.name}? Their account, ${c.stores.length} store(s), live pages and customer requests will be deleted for good.`);
+    if (!sure) return;
+    const r = await fetch("/api/admin/creator", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ creatorId: c.id, action }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return setNotice(d.error || "That didn't work.");
+    setNotice(action === "reset" ? `Temporary password for ${c.name}: ${d.tempPassword} (shown once; share it with them directly and ask them to keep it private).` : `${c.name} was removed.`);
     load();
   }
 
@@ -76,7 +93,15 @@ export default function Admin() {
           <form onSubmit={auth} className="mt-6 max-w-sm rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-ink">{state === "setup" ? "Set the admin password" : "Admin login"}</p>
             <p className="mt-1 text-xs text-neutral-500">{state === "setup" ? "First visit: choose a password (10+ characters). Only you will use it." : "Enter the admin password."}</p>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={state === "setup" ? "new-password" : "current-password"} className={`${input} mt-3`} />
+            {state === "setup" && (
+              <>
+                <p className="mt-3 text-xs text-neutral-600">
+                  Setup code: open Vercel → launchpad → <b>Logs</b> and search <b>admin setup code</b>. It&apos;s valid for an hour, so only the project owner can claim this page.
+                </p>
+                <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="8-digit setup code" className={`${input} mt-2`} />
+              </>
+            )}
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={state === "setup" ? "New admin password" : "Admin password"} autoComplete={state === "setup" ? "new-password" : "current-password"} className={`${input} mt-3`} />
             {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             <button className="mt-3 w-full rounded-xl bg-violet py-3 text-sm font-semibold text-white">{state === "setup" ? "Save and open" : "Log in"}</button>
           </form>
@@ -104,6 +129,12 @@ export default function Admin() {
               Funnel since launch: {funnel.signed_up || 0} sign-ups → {funnel.directions_shown || 0} saw directions → {funnel.store_generated || 0} stores built → {funnel.published || 0} published → {funnel.waitlist_join || 0} customer requests
             </p>
 
+            {notice && (
+              <div className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-200">
+                <span>{notice}</span>
+                <button onClick={() => setNotice("")} aria-label="Dismiss">✕</button>
+              </div>
+            )}
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, number or Instagram" className={`${input} mt-6 max-w-sm`} />
 
             <div className="mt-4 overflow-x-auto rounded-2xl border border-neutral-200 bg-white">
@@ -123,6 +154,10 @@ export default function Admin() {
                       <td className="px-4 py-3">
                         <p className="font-semibold text-ink">{c.name}</p>
                         <p className="text-xs text-neutral-500">+91 {c.phone}</p>
+                        <div className="mt-2 flex gap-2 text-xs">
+                          <button onClick={() => act(c, "reset")} className="font-semibold text-violet underline">Reset password</button>
+                          <button onClick={() => act(c, "delete")} className="font-semibold text-red-600 underline">Remove</button>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-neutral-600">
                         {c.platforms.length
@@ -197,6 +232,21 @@ export default function Admin() {
                 </tbody>
               </table>
             </div>
+
+            <section className="mt-8">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Recent admin actions</h2>
+              {auditLog.length === 0 ? (
+                <p className="mt-2 text-sm text-neutral-500">Nothing yet.</p>
+              ) : (
+                <ul className="mt-2 space-y-1 text-xs text-neutral-600">
+                  {auditLog.map((a, k) => (
+                    <li key={k}>
+                      {when(a.at)} · <b>{a.action.replace(/_/g, " ")}</b> · {a.detail}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </>
         )}
       </div>

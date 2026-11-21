@@ -551,6 +551,21 @@ export default function Studio({ id }: { id: string }) {
                   {ACTION_LABEL[q.action]} · {q.product} · {new Date(q.at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                 </p>
                 {q.message && <p className="mt-1 rounded-lg bg-neutral-50 p-2 text-xs">{q.message}</p>}
+                <div className="mt-1.5 flex gap-3 text-xs font-semibold">
+                  <a href={`https://wa.me/91${q.phone}?text=${encodeURIComponent(`Hi ${q.name}, this is ${draft.creator.displayName} about “${q.product}”.`)}`} target="_blank" rel="noopener noreferrer" className="text-emerald-700">
+                    Reply on WhatsApp
+                  </a>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm(`Remove ${q.name}'s request? Their name and number will be deleted.`)) return;
+                      const r = await fetch(`/api/stores/${id}/requests`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ at: q.at, phone: q.phone }) });
+                      if (r.ok) setRequests((x) => x.filter((y) => !(y.at === q.at && y.phone === q.phone)));
+                    }}
+                    className="text-neutral-400 hover:text-red-600"
+                  >
+                    Remove
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

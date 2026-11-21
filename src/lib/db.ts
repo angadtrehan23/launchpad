@@ -182,6 +182,31 @@ export async function endSession(prefix: "sess" | "asess", token: string): Promi
 export const SESSION_MAX_AGE = SESSION_DAYS * 86400;
 
 // ---- admin password (set once, by whoever runs the platform) ----
+/**
+ * First-time setup needs a one-time code that is only written to the server logs (Vercel → Logs),
+ * so only the project owner can claim the admin page.
+ */
+export async function adminSetupCode(): Promise<string> {
+  let code = await get("admin:setupcode");
+  if (!code) {
+    code = String(Math.floor(10000000 + Math.random() * 90000000));
+    await set("admin:setupcode", code, 3600);
+    console.log(`[admin-setup] Launchpad admin setup code: ${code} (valid 1 hour)`);
+  }
+  return code;
+}
+export async function clearSetupCode(): Promise<void> {
+  await del("admin:setupcode");
+}
+/** Admin actions are kept for review (who was verified, reset, removed, and when). */
+export async function audit(action: string, detail: string): Promise<void> {
+  const line = JSON.stringify({ at: new Date().toISOString(), action, detail });
+  console.log("[admin-audit]", line);
+  await rpush("audit", line);
+}
+export async function getAudit(): Promise<{ at: string; action: string; detail: string }[]> {
+  return (await lrange("audit")).slice(-30).reverse().map((x) => JSON.parse(x));
+}
 export async function getAdminHash(): Promise<string | null> {
   return get("admin:pass");
 }
@@ -208,6 +233,16 @@ export async function claimSlug(slug: string, id: string): Promise<boolean> {
   return setNew(`slug:${slug}`, id);
 }
 
+/** Delete one store: its draft, live page and customer requests. */
+export async function deleteStore(owner: CreatorAccount, storeId: string): Promise<void> {
+  const s = await getSaved(storeId);
+  if (s?.slug) await del(`slug:${s.slug}`);
+  await del(`store:${storeId}`);
+  await del(`req:${storeId}`);
+  owner.storeIds = owner.storeIds.filter((x) => x !== storeId);
+  await saveCreator(owner);
+}
+
 // ---- customer requests (waitlist joins, slot requests, questions) ----
 export async function addRequest(storeId: string, r: CustomerRequest): Promise<"added" | "duplicate" | "full"> {
   const list = await getRequests(storeId);
@@ -218,6 +253,18 @@ export async function addRequest(storeId: string, r: CustomerRequest): Promise<"
 }
 export async function getRequests(storeId: string): Promise<CustomerRequest[]> {
   return (await lrange(`req:${storeId}`)).map((x) => JSON.parse(x) as CustomerRequest);
+}
+/** Creator removes a request (e.g. the customer asked to be taken off the list). */
+export async function removeRequest(storeId: string, r: { at: string; phone: string }): Promise<boolean> {
+  const raws = await lrange(`req:${storeId}`);
+  const raw = raws.find((x) => {
+    const e = JSON.parse(x) as CustomerRequest;
+    return e.at === r.at && e.phone === r.phone;
+  });
+  if (!raw) return false;
+  if (useRedis) await redis(["LREM", `req:${storeId}`, 1, raw]);
+  else await withFile((db) => { db[`req:${storeId}`] = JSON.stringify(arr(db, `req:${storeId}`).filter((x) => x !== raw)); });
+  return true;
 }
 export async function countRequests(storeIds: string[]): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
