@@ -1,55 +1,81 @@
-# Loom walkthrough script (about 8 minutes)
+# Walkthrough video script (final narration)
 
-**Setup before recording:** open https://launchpad-nu-silk.vercel.app on your phone (or Chrome's phone view, 390×844). Build one store before recording so you have a published link ready in case the free AI is slow on camera. Speak in your own words; the lines below are a guide.
+5 min 36 s · voiced at 1.15x · recorded on the live site (https://launchpad-nu-silk.vercel.app).
 
----
+## 01 · The problem
 
-### 0:00 – 0:45 · The problem (camera on, no screen)
-> "SuperProfile's onboarding says: upload a PDF, set a price, and your page is live. That's instant only if you already know what the PDF is. The creator in this brief has the audience but has never decided what to sell, what to charge, or what to write, so they stall on an empty store. And the AI doesn't solve that by writing a page. It solves it by helping them *decide*, then *proving* someone wants it before they spend weeks making it."
+On screen: 2M+ creators on SuperProfile · New creators land on an empty store · They don't know what to sell, price, or write
 
-### 0:45 – 3:15 · The flow, end to end (screen: phone view)
-1. **Home.** "Three taps, then AI. No login." Tap *Let's build my store*.
-2. **Where do you create?** Tap Instagram + YouTube, type a username, pick follower ranges.
-   > "Tapping is easier than describing yourself. This also sets the price tier, because total reach drives what people will pay."
-3. **Do you earn today?** Tap *Brand collabs*.
-   > "Creators who already earn get priced in the upper half of the range."
-4. **Topics.** Tap 3 chips, switch to Hinglish.
-5. **Directions.** Wait about 10 s.
-   > "This is the 'we'll figure it out for you' moment: three different angles, who'd pay, example products."
+Hi, I'm the product manager behind Launchpad. SuperProfile already helps over two million creators sell courses, digital products and one-on-one sessions from a single link. But here's the problem. A new creator signs up, lands on an empty store, and stalls. They have an audience, they have expertise, but they don't know what to sell, what to charge, or what to write. SuperProfile's onboarding says, upload a PDF and set a price. That only works if you already know what the PDF is.
 
-   Pick one.
-6. **Building screen** (about 15 s). Narrate the steps.
+## 02 · The bet
 
-### 3:15 – 5:00 · The store and editor
-- Scroll the store.
-  > "Products in SuperProfile's own formats, an entry product at ₹199, a higher-touch one at ₹999."
+On screen: Decide what to sell · Price it in rupees · Prove someone wants it, before building it
 
-  Tap **Why ₹199?**
-  > "The AI writes the words, but rules set the price range for this format and audience. The AI can't price a beginner's e-book at ₹2,999."
-- Tap a product → edit the price to ₹4,999 → point at the warning "higher prices usually need more trust first". Change it back.
-- Tap **↻ New** on one product.
-  > "Regenerate one part; the rest of the store is the context, so it doesn't duplicate."
-- Switch theme to **Acid** and back to **Candy**.
-- Scroll to **the launch plan**.
-  > "Every step uses a real SuperProfile feature: Auto-DM 'comment FIT for the link', lead magnets, email."
-- **Publish** → share sheet → open the public page.
+So the bet behind Launchpad is simple. Help the creator decide what to sell, price it sensibly in rupees, and then prove that someone actually wants it, before they spend weeks making it. Let me show you how that works, end to end, on the live site.
 
-### 5:00 – 6:00 · The bet: a demand test (public page)
-- Before publishing, add your WhatsApp number in **"Where your waitlist goes"**.
-- On the public page, tap **Join the waitlist** → WhatsApp opens with "Hi Priya! I'd like to join the waitlist for …".
-  > "These products don't exist yet, so instead of a dead-end checkout, the follower's interest lands in the creator's WhatsApp, where Indian creators already talk to their audience. The creator counts requests per product and builds the winner first."
-- Scroll the editor to **Unlock next**.
-  > "That's when they upgrade to SuperProfile's paid plan to take payments. Free plan, then demand, then upgrade."
-- One line on architecture: "There's no database: drafts stay on the creator's phone and the published store lives inside its own link, re-checked by the server every time it opens."
+## 03 · Step 1 · Account
 
-### 6:00 – 7:00 · Edge cases (show at least one)
-- Back to home → Topics → clear the chips → type `asdf jkl qwerty` → *Figure out what I can sell*.
-  > "Keyboard mash is caught by rules before we spend an AI call."
-- In the editor, type "Guaranteed results in 7 days" in the bio → Publish.
-  > "Blocked: we won't publish guaranteed results, cures or income promises, whether the AI or the creator wrote them."
-- *(Optional)* Mention: "If the AI is slow or down, the creator gets a clearly labelled starter store, never an error page. Regenerating never destroys their edits."
+On screen: Name, mobile number, password · Stores saved to the account · Real name and photo on the store
 
-### 7:00 – 8:00 · How it's built and what's next (camera or the doc)
-- "A two-step AI workflow, not an agent, each step with a fixed output format. Code checks every answer: price limits, honesty rules, button labels. It runs on a free open-source model with no keys; a Claude or Gemini key swaps in by config."
-- "I built a 15-case test set including prompt injection and 'guaranteed stock tips'. With real AI, the injection was ignored and the stock-tips case safely fell back."
-- "I'd measure first-session publish rate, aiming for +50% relative, and time to publish under 5 minutes, through an A/B test on new signups. Next: real SuperProfile pricing data, 'build it' assist for the winning product, and an official Instagram connection."
+Step one is a creator account. Name, mobile number and a password. Everything the creator builds is saved to that account, so they can come back on any device, and we always know which creator a store belongs to. Then their name and an optional photo. The store should never invent a name for someone.
+
+## 04 · Step 2 · Channels
+
+On screen: Total audience sets the price tier · YouTube: public channel page is read · Instagram: creator pastes bio + caption
+
+Next, where they create. They pick their platforms and roughly how many followers they have on each. That total sets the price tier, because a creator with five thousand followers shouldn't price like one with five lakh. For real profile signals, YouTube channels are read from the public channel page. Instagram doesn't allow apps to read profiles without its official login, so instead of scraping, the creator pastes their bio and a recent caption. That's their own voice, and the store uses it.
+
+## 05 · Step 3–4 · Earnings & topics
+
+On screen: Tap, don't type · Up to 6 topics · English or Hinglish
+
+Then two quick questions. Do they earn from content today, and what is their content about. Everything here is tap first, because a creator on a phone shouldn't have to write an essay. They can add a line in their own words, and choose English or Hinglish for the store.
+
+## 06 · Step 5 · Directions
+
+On screen: 3 sellable angles, not a category · Who pays + product ideas · Pick, ask for more, or type your own
+
+Now the system figures it out. Instead of one answer, it gives three directions. Each one is a specific angle, not a broad category, with who would pay and a few product ideas. The creator picks the one that feels like them, asks for different ideas, or types their own niche. I'll go with the first one.
+
+## 07 · Building the store
+
+On screen: Words: written for this creator · Prices: fixed ₹ ranges in code · Honesty check on every reply
+
+While the store is being built, here's the key design decision. The writing is generated for this creator, but the prices are not left to guesswork. Price ranges in rupees are fixed in code, by product type and audience size, and every price is pulled into that range. Every reply is also checked for things like guaranteed results or income claims before it ever reaches the creator.
+
+## 08 · Review & edit
+
+On screen: Edit the real page, not a form · Buttons: fixed choices, each with an action · Warning before anything is replaced
+
+And here's the store. The creator edits the real page, not a form. Each product shows its price, and only the creator sees why that price was suggested. If they push a price far above the range, they get a gentle warning. The button is picked from a fixed set, like join the waitlist or request a slot, so it always matches what happens next. And before any part is rewritten, they're warned that the current version will be replaced.
+
+## 09 · Publish
+
+On screen: Saved to the creator's account · Short, permanent link with their name · Same link after every update
+
+Publishing is one tap. The store is saved to the creator's account, and the page gets a short, permanent link with their name in it. When they update the page later, the link stays the same, so whatever they've already shared keeps working.
+
+## 10 · The demand test
+
+On screen: Products aren't built yet · Customer leaves name + number · Request lands in the creator's account
+
+This is what a follower sees. And this is the important part. These products don't exist yet, so instead of a dead end checkout, a follower joins the waitlist. They leave their name and number, and the request is saved straight into the creator's account. The creator can see which product people actually want, build that one first, and then turn on payments in SuperProfile.
+
+## 11 · Edge cases
+
+On screen: Keyboard mash caught before any AI call · Risky claims blocked at publish · If generation fails, nothing breaks
+
+A couple of edge cases. If someone types keyboard mash, it's caught by simple rules before any generation even runs, and they get a friendly nudge. And if a creator writes something like guaranteed results in seven days, publishing is blocked, whether that line came from the system or from the creator. If generation is slow or fails, they get a clear starter version, never a broken page.
+
+## 12 · Requests, My stores, verification
+
+On screen: Requests saved per store · My stores: every store, live or draft · Instagram: code in bio, team confirms
+
+Back in the editor, the creator sees every request with the name and number. My stores shows all their stores, whether each one is live, and how many requests came in. For trust, they can verify their Instagram. They add a one-time code to their bio, our team confirms it from an admin page, and the store gets a verified badge. That admin page also lists every creator who signed up, with their stores and links.
+
+## 13 · How I'd measure it
+
+On screen: Metric: first-session publish rate, +50% · Time to publish: under 5 minutes · Next: real price data, build-it assist
+
+To close, how I'd measure this. The main number is the share of new creators who publish in their first session, and I'd target a fifty percent relative lift over today's blank store, tested with a simple A B split on new signups. The second number is time to a published store, under five minutes. Next, I'd replace my price ranges with SuperProfile's real sales data, and help creators build the product that their waitlist asks for. Thanks for watching.

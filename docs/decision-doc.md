@@ -9,7 +9,7 @@ From SuperProfile's own site, nothing answers those today:
 - no pricing suggestions;
 - Super AI works on a store that already exists.
 
-**Reframe.** The real job isn't "generate a storefront". It's **"help me decide what to sell, and prove someone wants it, before I spend weeks making it."** The AI suggests products the creator **hasn't made yet**. Publishing a store selling a non-existent e-book, then sending buyers to a dead-end checkout, would be a store nobody is proud of. So the first store is a **demand test**: every button asks the customer for their name and WhatsApp number, then sends the request to the creator on WhatsApp ("Please add me to the waitlist for …", or "request a slot" for calls and workshops). The creator learns what to build from their own followers. Then they unlock payments on SuperProfile's paid plan, which is SuperProfile's revenue moment.
+**Reframe.** The real job isn't "generate a storefront". It's **"help me decide what to sell, and prove someone wants it, before I spend weeks making it."** The AI suggests products the creator **hasn't made yet**. Publishing a store selling a non-existent e-book, then sending buyers to a dead-end checkout, would be a store nobody is proud of. So the first store is a **demand test**: every product button (join the waitlist, request a slot, book a free call, ask a question) collects the customer's name and number, with consent, and saves the request to the creator's account. The creator learns what to build from their own followers. Then they unlock payments on SuperProfile's paid plan, which is SuperProfile's revenue moment.
 
 **Assumptions** (to replace with real data):
 - INR price ranges by format × audience size are my estimates, not SuperProfile sales data.
@@ -22,7 +22,7 @@ From SuperProfile's own site, nothing answers those today:
 **Secondary user:** a teacher or professional with no social presence. They choose "I'm not on social yet" and get the lowest price tier.
 
 ```
- Your name, WhatsApp, photo ─► Where you create (+ YouTube read / Instagram bio pasted)
+ Account (name, mobile, password) ─► Name + photo ─► Where you create (+ YouTube / Instagram bio)
           ─► Do you earn from it? ─► Tap topics (+ own words, language)
           │                                              │
           ▼                                              ▼
@@ -31,13 +31,14 @@ From SuperProfile's own site, nothing answers those today:
                                                          ▼
                                   AI: store (bio, 2–4 products, ₹ prices + why, copy)
                                                          │
-                       edit any field · ↻ one part · regenerate all · theme
+      edit any field · ↻ one part (warned before replacing) · fixed button choices · theme
                                                          │
-                                                 Publish → /s/<code> (store lives in the link)
+                  Publish → /s/<creator-name> (saved to the account; same link after updates)
                                                          │
-   Follower taps a product → name + number → request lands in creator's WhatsApp
+   Follower taps a product → name + number (+ consent) → request saved to the creator's account
                                                          │
-                 Creator counts requests per product → builds the winner → unlocks payments
+   Creator sees requests per product → replies on WhatsApp → builds the winner → unlocks payments
+   Team: admin page (all creators, stores, links) · Instagram verified by a code in the bio
 ```
 
 **Main-screen alternatives I rejected**
@@ -48,21 +49,21 @@ From SuperProfile's own site, nothing answers those today:
 | Decision | Why | Trade-off |
 |---|---|---|
 | **AI writes the words; rules set the price range** | An LLM alone will price a beginner's e-book at ₹2,999. Ranges by format × audience tier are enforced in code, snapped to familiar points (₹199, ₹499…). The AI picks inside the range and explains it ("Why ₹199?") | The ranges are my guesses until real sales data replaces them |
-| **Waitlist instead of checkout, delivered on WhatsApp** | Products don't exist yet; this turns a dead end into demand data. Requests arrive where Indian creators already talk to followers, with no database and no personal data stored by us | No money changes hands; the creator counts requests in WhatsApp instead of a dashboard |
+| **Waitlist instead of checkout, saved to the creator's account** | Products don't exist yet; this turns a dead end into demand data. Each button is picked from a fixed list tied to one action, so the label always matches what happens. Requests are counted per product, and the creator replies on WhatsApp in one tap | No money changes hands; no alert yet when a request arrives (email/SMS would cost money) |
 | **A fixed 2-step workflow, not an agent** | The path never changes (directions → store), so a workflow is faster, cheaper and testable. An agent would add failure points for no gain | Less flexible; it can't, say, research competitors |
 | **Real profile signals, legitimately** | YouTube: we read the creator's public channel page (name, description, photo) and feed it to the AI. Instagram doesn't allow reading profiles without its official login, so creators paste their bio and a recent caption; no scraping | Instagram signals depend on what the creator pastes |
 | **Free, keyless AI, called from the visitor's browser** (open-weights GPT-OSS 20B) | Real LLM calls at zero cost. Each visitor uses their own free quota, so nobody queues behind other sites on Vercel's shared servers. The server builds the prompt and validates every reply. A Claude or Gemini key switches in by environment variable | Smaller model; a free-tier limit of 1 reply per 45 s per visitor, so the store step may wait up to ~40 s if the creator picks a direction very fast |
-| **No login and no database** | Removes the biggest drop-off step and all setup. Drafts live in the creator's browser; a published store lives **inside its own link** (compressed into `/s/<code>`, then shortened with TinyURL), re-checked by the server every time it's opened. The wizard and drafts survive refreshes | Editing is tied to the device it was built on; republishing gives a new link; no view/click dashboard (Vercel Web Analytics could add one) |
+| **Creator accounts on a free database** (Upstash Redis free tier) | A first version kept drafts on the device and packed the store into its link: real photos made links too long to open, and nobody could tell which creator owned a store. Now creators sign up with name, mobile and password (hashed); stores, drafts and requests live in the account on any device; links are short and permanent (`/s/<name>`); an admin page lists every creator with their stores | One more step before the wizard; numbers aren't OTP-verified (paid SMS), so the admin can reset or remove accounts |
 | **Course-platform visual style** | Creators are setting up a business: a calm, form-like flow (step counter, labelled fields, white cards, one violet accent) builds trust. A Gen Z sticker style was tried and dropped as too playful | Less flashy; personality comes from the creator's photo and theme |
-| **Safe for a public link** | The honesty check runs at publish *and* whenever a link is opened, so hand-made links with risky claims don't render; no handle-based URLs to squat; no visitor data stored; creator answers sent to the AI are disclosed; `PUBLISH_PAUSED` / `AI_DISABLED` act as kill switches | Long links; real handle verification needs login |
+| **Safe for a public link** | Honesty check at publish *and* on every page open; creators can only open their own stores; login and sign-up rate limits; the creator's number never appears publicly; "Instagram not verified yet" until the team confirms a code in the bio; the admin page can only be claimed with a code from the server logs, and admin actions are logged; `PUBLISH_PAUSED` / `AI_DISABLED` kill switches | Instagram verification is manual until the official API is approved |
 
 ## 4. What I deliberately did not build
 - **Payments and checkout:** SuperProfile already has them; the waitlist validates demand first.
-- **Login and accounts:** they kill first-session activation; drafts saved on the device are enough for a prototype.
+- **OTP login:** it needs paid SMS; password login plus admin reset covers the prototype.
 - **A launch-plan / upsell panel in the editor:** tested and removed; the journey should end at a clean, shareable store.
 - **Instagram scraping or login:** terms and fragility. Official API access is a "next 2 weeks" item.
 - **Devanagari Hindi output:** Hinglish covers how these creators actually write; Hindi script is next.
-- **Unpublish/delete, multiple stores, custom links:** a lifecycle and moderation surface not needed to test the bet.
+- **Custom links and request alerts:** not needed to test the bet (creators can already delete stores and requests).
 - **Auto-publish:** a human always reviews before anything goes public.
 
 ## 5. How the AI works
@@ -75,7 +76,7 @@ From SuperProfile's own site, nothing answers those today:
   - clamp lengths;
   - move prices into their range, and rewrite the "why" if the number moved;
   - drop duplicate products;
-  - force buttons to match the format ("Request a slot" vs "Join the waitlist");
+  - keep buttons to the fixed list, matched to the format ("Request a slot" for sessions, a waitlist button otherwise);
   - **block guaranteed-result, cure and income claims**, both in AI output and in what the creator types at publish.
 - **Failure handling:**
   - the visitor's browser makes the free AI call (own quota); the server checks the reply, with one time limit per request (57 s, under the 60 s cap) and one retry if time allows;
@@ -86,7 +87,7 @@ From SuperProfile's own site, nothing answers those today:
 - **Evidence:**
   - a 15-case test set (typical, edge, adversarial) with an automatic runner and a 5-point human rubric;
   - with real AI, 5 of 6 paced cases were written by the AI, the prompt injection was ignored, and the "guaranteed stock tips" case correctly fell back to the safe template;
-  - end-to-end tests (48 checks locally, plus 14 against the live, database-free site) cover the edge cases.
+  - end-to-end tests (45 checks locally, 34 on the live site) cover accounts, ownership, publishing, requests, admin and the edge cases.
 
 ## 6. Success metrics
 **North Star for this feature:** `new creators × first-session publish rate × % of published stores with a visitor intent signal (waitlist message or click) within 7 days`. Published stores that nobody wants don't count.
@@ -97,7 +98,7 @@ From SuperProfile's own site, nothing answers those today:
 **How to measure:**
 - A/B test on new signups: 50% see "Build my store with AI", 50% get today's blank store.
 - Run 2–4 weeks; read once on the date set in advance.
-- Instrumented in the prototype: generation time and source, edit depth per field (kept on the creator's device), and publish. Inside SuperProfile these events would go to its existing analytics; the prototype has no database, so it doesn't aggregate live totals.
+- Instrumented in the prototype: a live funnel on the admin page (sign-ups → saw directions → stores built → published → customer requests), plus generation time and source, page views and taps per product. Inside SuperProfile these events would go to its existing analytics.
 
 **Guardrails:**
 - the AI group's 30-day first-sale rate must not fall more than 1 point below control;
@@ -115,16 +116,16 @@ From SuperProfile's own site, nothing answers those today:
 ## 8. With 2 more weeks
 1. Replace the guessed price ranges with SuperProfile's own sales data by niche × format × audience.
 2. **Waitlist → "build it":** when a product crosses a demand threshold, AI drafts that e-book or course outline, which closes the loop to a first sale.
-3. Login + official Instagram connection: verify handle ownership (stops impersonation), real photo and bio.
-4. A demand counter: tag each WhatsApp request with its product (WhatsApp Business API) so the creator sees counts, plus Devanagari Hindi.
+3. OTP login and the official Instagram connection, so number and handle ownership are verified automatically instead of by the team.
+4. Alert the creator when a request arrives (WhatsApp Business API), plus Devanagari Hindi.
 5. Grow the eval set to ~50 real inputs and run it on every prompt change; compare the free model vs Claude on the human rubric.
 6. Ship behind a flag and run the A/B test.
 
 ## How I used AI coding tools
 I used Claude Code throughout:
 - researched SuperProfile's public site;
-- ran structured product passes: journey mapping, AI-suitability, eval design, risk review, metrics;
+- ran structured product passes (journey mapping, AI-suitability, eval design, risk review, metrics), and re-ran the journey and risk reviews on each feedback round;
 - built the Next.js app and designed the visual system;
 - wrote and ran the end-to-end tests and the eval runner.
 
-The eval found 2 real bugs before any user did: the fallback echoing risky text, and keyboard mash getting through.
+The eval found 2 real bugs before any user did: the fallback echoing risky text, and keyboard mash getting through. The risk review of the accounts version found the admin page could be claimed by whoever opened it first; claiming now needs a code from the server logs.
